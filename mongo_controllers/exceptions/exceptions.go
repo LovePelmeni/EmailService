@@ -29,3 +29,8 @@ func OperationFailed(Operation string, Reason ...error) error {
 	return errors.New(fmt.Sprintf(
 	"%s Operation Failed. Reason: %s", Operation, Reason))
 }
+
+func ConnectionFailed() error {
+	return errors.New("Failed to Connect to Mongo DB Database.")
+}
+

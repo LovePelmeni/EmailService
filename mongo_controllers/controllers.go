@@ -99,7 +99,7 @@ func (this *MongoDatabase) saveDocument(document *EmailDocument) (bool, error) {
 	Session, Exception := this.Connect()
 	if errors.Is(Exception, mongo.ErrWrongClient) ||
 	errors.Is(Exception, mongo.ErrWrongClient){panic("Invalid Client Credentials.")}
-	if Exception != nil {panic(Exception)}
+	if Exception != nil {return false, exceptions.ConnectionFailed()}
 
 	Collection := Session.Database(this.DbName).Collection(
 	fmt.Sprintf("%s", EmailCollectionName))
@@ -120,7 +120,7 @@ func (this *MongoDatabase) updateDocument(documentUuid string,
 UpdatedData ...map[string]string) (bool, error) {
 
 	if none := reflect.TypeOf(UpdatedData).NumField(); none == 0 {
-		return false, exceptions.InvalidMongoClientError()
+		return false, exceptions.ConnectionFailed()
 	}
 	Connection, error := this.Connect()
 	if errors.Is(error, mongo.ErrWrongClient,) || errors.Is(error, mongo.ErrClientDisconnected){
@@ -141,6 +141,7 @@ UpdatedData ...map[string]string) (bool, error) {
 		InfoLogger.Println(fmt.Sprintf("Failed To Update Object: %s", error))
 	 	return false, exceptions.OperationFailed("Update", error)
 	}
+	return true, nil 
 }
 
 func (this *MongoDatabase) deleteDocument(DocumentUuid string) (bool, error) {
@@ -155,4 +156,35 @@ func (this *MongoDatabase) deleteDocument(DocumentUuid string) (bool, error) {
 
 	if error != nil {return true, nil}else{return false, 
 	exceptions.OperationFailed("Delete", error)}
+}
+
+var document EmailDocument
+
+func (this *MongoDatabase) getDocument(DocumentUuid string) (*mongo.SingleResult, error){
+
+	connection, error := this.Connect() 
+	if error != nil {return nil, exceptions.ConnectionFailed()}
+
+	Collection := connection.Database(this.DbName).Collection(EmailCollectionName)
+	Document := Collection.FindOne(context.Background(),
+	map[string]string{"_id": DocumentUuid})
+
+	if errors.Is(Document.Err(), mongo.ErrNilDocument) ||
+    errors.Is(Document.Err(), mongo.ErrNilValue){
+	DebugLogger.Println("No such Email Documents with Uuid:",
+    DocumentUuid)}
+	return Document, nil 
+}
+
+func (this *MongoDatabase) getDocumentList() (*mongo.Cursor, error) {
+	connection, error := this.Connect() 
+	if error != nil {return nil, nil}
+
+	Collection := connection.Database(this.DbName).Collection(EmailCollectionName)
+	Documents, error := Collection.Find(context.Background(), nil)
+
+	if errors.Is(Documents.Err(), mongo.ErrNilCursor) ||
+    errors.Is(Documents.Err(), mongo.ErrNilValue){
+	DebugLogger.Println("No Documents Were Found.")}
+	return Documents, nil 
 }
