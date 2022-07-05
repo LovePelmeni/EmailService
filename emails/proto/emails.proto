@@ -1,0 +1,39 @@
+syntax = "proto3"; 
+package emails; 
+
+option go_package = "grpcControllers/";
+
+
+// Sender Service.
+
+service EmailSender {
+    rpc SendEmail(DefaultEmailParams) returns (EmailResponse); 
+    rpc SendOrderEmail(OrderEmailParams) returns (EmailResponse);
+}
+
+enum OrderStatus {
+    ACCEPTED = 0;
+    REJECTED = 1;
+}
+
+// GRPC Request Params.
+
+message OrderEmailParams {
+    OrderStatus Status = 1;
+    string Message = 2;
+    string CustomerEmail = 3;
+    optional bytes BackgroundImage = 4;
+}
+
+message DefaultEmailParams {
+    // params for sending Default Email not related to any theme
+    string EmailMessage = 1;
+    string customerEmail = 2;
+    optional bytes BackgroundImage = 3;
+}
+
+// GRPC Response Messages.
+
+message EmailResponse {
+    bool Delivered = 1;
+}
