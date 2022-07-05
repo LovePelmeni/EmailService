@@ -22,9 +22,16 @@ func (this *EmailSenderSuite) SetupTest() {
 	this.EmailMessage = "Hello, this is test Email Message."
 	this.EmailReceiver = "some_email@gmail.com"
 }
+
+
 func TestRunEmailSenderSuite(t *testing.T) {
 	suite.Run(t, new(EmailSenderSuite))
 }
+
+func (this *EmailSenderSuite) TearDownTest(t *testing.T) {
+	this.Controller.Finish()
+}
+
 
 func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
 	defer this.Controller.Finish()

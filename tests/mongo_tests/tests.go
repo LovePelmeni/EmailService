@@ -7,18 +7,20 @@ import (
 
 	"fmt"
 
-	"github.com/LovePelmeni/EmailService/mongo_controllers/"
 	"github.com/LovePelmeni/OnlineStore/EmailService/mongo_controllers"
 	"github.com/fossoreslp/go-uuid-v4"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/require"
 )
+
 
 type MongoConsumerSuite struct {
 	suite.Suite
+	*require.Assertions 
 	Controller            *gomock.Controller
 	MongoConnection       *mongo_controllers.MongoDatabase
-	Document              *mongo_controllers.Document
+	Document              *mongo_controllers.EmailDocument
 	MockedMongoDBConsumer interface{} // mocked Interface.
 }
 
@@ -48,14 +50,21 @@ func (this *MongoConsumerSuite) SetupTest() {
 		generatedUuid = fmt.Sprintf("%s", time.Now().String())
 	}
 
-	this.Document = *mongo_controllers.EmailDocument{
+	this.Document = &mongo_controllers.EmailDocument{
 		Uuid:          generatedUuid,
 		EmailReceiver: customerEmail,
-		EmailMessage:  emailMessage,
-		CreatedAt:     time.Now().Date,
+		Message:  emailMessage,
+		CreatedAt:     time.Now(),
 	}
 	this.MockedMongoDBConsumer = []interface{}{}
-	this.MongoConnection = mongo_controllers.MongoDatabase{}
+	this.MongoConnection = &mongo_controllers.MongoDatabase{
+		Host: TestHost, Port: TestPort, DbName: TestDbName,
+	    User: TestUser, Password: TestPassword,
+	}
+}
+
+func (this *MongoConsumerSuite) TearDownTest(t *testing.T) {
+	this.Controller.Finish()
 }
 
 func (this *MongoConsumerSuite) TestSaveDocument(t *testing.T) {

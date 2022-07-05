@@ -4,7 +4,6 @@ import (
 	"log"
 	"fmt"
 	"errors"
-	"github.com/LovePelmeni/OnlineStore/EmailService/emails/exceptions"
 	"strings"
 	"os"
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
@@ -15,7 +14,6 @@ import (
 	"strconv"
 	mail "github.com/xhit/go-simple-mail/v2"
 	"time"
-	"ioutil"
 )
 
 var (
