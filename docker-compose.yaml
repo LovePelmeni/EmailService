@@ -3,9 +3,7 @@ services:
 
   application:
     container_name: application
-    build: 
-      context: ./ 
-      dockerfile: ./ 
+    build: ./
     env_file: ./project_env.env 
     ports:
       - published: 8000 
@@ -14,6 +12,7 @@ services:
       - go_store_network 
     depends_on:
       - mongo_database 
+      - test_mongo_database 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthcheck"]
       retries: 5 
@@ -25,8 +24,11 @@ services:
     image: mongo:latest 
     environment:
       MONGO_INITD_DATABASE: emails_db 
-      MONGO_INITD_USER: mongo_user 
+      MONGO_INITD_USERNAME: mongo_user 
       MONGO_INITD_PASSWORD: mongo_password 
+    volumes:
+      - ./mongo/docker-entrypoint-init.d/:/etc/mongod/docker-entrypoint-init.d/
+      - ./mongo/db/data:/etc/mongod/db/data
     ports:
       - 27018:27018 
     networks:
@@ -35,8 +37,26 @@ services:
       test: ["mongod -"]
       retries: 5 
       timeout: 10s 
+      interval: 10s
+      
+  test_mongo_database:
+    container_name: test_mongo_database 
+    image: mongo:latest 
+    environment:
+      MONGO_INITD_DATABASE: emails_test_db 
+      MONGO_INITD_USERNAME: mongo_user 
+      MONGO_INITD_PASSWORD: mongo_password 
+    ports:
+      - 27017:27017 
+      - 29017:29017 
+    networks:
+      - go_store_network 
+    healthcheck:
+      test: ["CMD", "mongod -"]
+      retries: 5 
+      timeout: 10s 
       interval: 10s 
-
+    
 networks:
   go_store_network:
     external: true 

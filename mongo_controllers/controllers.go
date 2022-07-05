@@ -3,12 +3,10 @@ package mongo_controllers
 import (
 	"sync"
 	"time"
-	"github.com/"
 	"fmt"
 	"context"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"errors"
 	"github.com/fossoreslp/go-uuid-v4"
 )
@@ -48,19 +46,16 @@ type EmailDocument struct {
 func GenerateMongoDocumentIndexUuid() (string, error){
 	generatedUuid, error := uuid.NewString()
 	if error != nil {return "", error}
-	generatedUuid = generatedUuid.String() + fmt.Sprintf(
+	generatedUuid = generatedUuid + fmt.Sprintf(
 	"%s", time.Now().String())
 	return generatedUuid, nil 
 }
 
-func (this *MongoDatabase) saveDocument() (bool, error) {
-
+func (this *MongoDatabase) saveDocument(document *EmailDocument) (bool, error) {
 }
 
 func (this *MongoDatabase) updateDocument() (bool, error) {
-
 }
 
-func (this *MongoDatabase) deleteDocument() (bool, error) {
-	
+func (this *MongoDatabase) deleteDocument(DocumentUuid string) (bool, error) {
 }
