@@ -10,6 +10,10 @@ ENV PATH="/bin:$PATH"
 
 COPY ./go.mod ./go.sum ./ 
 COPY . .
-RUN go mod download && go get -u && go mod vendor 
-ENTRYPOINT ["sh", "./entrypoint.sh"]
+RUN go mod download && go get -u && go mod vendor   
+RUN go build -o main ./main/main.go 
+ENTRYPOINT ["go", "run", "./main/main.go"]
+
+
+
 
