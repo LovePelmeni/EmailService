@@ -2,7 +2,7 @@ package test_emails
 
 import (
 	"testing"
-	"github.com/LovePelmeni/OnlineStore/EmailService/mocks/mock_emails"
+	mock_emails "github.com/LovePelmeni/OnlineStore/EmailService/mocks/emails"
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -16,13 +16,15 @@ type EmailSenderSuite struct {
 	Controller                  *gomock.Controller
 	EmailMessage                string
 	EmailReceiver               string
-	MockedEmailSenderController *mock_emails.NewMockEmailSenderInterface
+	MockedEmailSenderController *mock_emails.MockEmailSenderInterface 
 }
 
 func (this *EmailSenderSuite) SetupTest() {
 	this.Controller = gomock.NewController(this.T())
 	this.EmailMessage = "Hello, this is test Email Message."
 	this.EmailReceiver = "some_email@gmail.com"
+	this.MockedEmailSenderController = mock_emails.NewMockEmailSenderInterface(
+	this.Controller)
 }
 
 func TestRunEmailSenderSuite(t *testing.T) {
@@ -41,16 +43,18 @@ func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
 		CustomerEmail: EmailReceiver,
 		Message:       EmailMessage}
 
-	mocked_response, error := this.MockedEmailSenderController.EXPECT().SendEmail(
-		gomock.Eq([]string{this.EmailReceiver, this.EmailMessage}),
-	).Return(true, nil).Times(1).NoError(error)
+	mocked_response := this.MockedEmailSenderController.EXPECT(
+	).SendEmail().Return(true, nil).Times(1)
 
 	response, error := EmailSender.SendEmailNotification()
 
-	assert.Equal(mocked_response, response)
-	if notError := assert.Equal(error, error) &&
-		assert.Equal(error, nil); notError != true {
-		assert.Errorf(
-			"Error Should Equals to None, got %s", error)
+	assert.Equal(t, mocked_response.String, response)
+	if notError := assert.Equal(t, error, error) &&
+		assert.Equal(t, error, nil); notError != true {
+		assert.Errorf(t, error,
+		"Error Should Equals to None, got %s", error)
 	}
 }
+
+
+

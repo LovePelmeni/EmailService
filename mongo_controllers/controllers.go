@@ -41,7 +41,6 @@ type MongoDatabaseInterface interface {
 	GetDocumentList() (bool, error)
 }
 type MongoDatabase struct {
-	mutex    sync.RWMutex
 	User     string
 	Password string
 	Host     string
@@ -157,12 +156,10 @@ func (this *MongoDatabase) UpdateDocument(documentUuid string,
 	Collection := Connection.Database(
 		this.DbName).Collection(EmailCollectionName)
 
-	this.mutex.Lock()
 	updated, error := Collection.UpdateOne(context.Background(),
 		map[string]string{"_id": documentUuid}, UpdatedData)
 	_ = updated
 
-	defer this.mutex.Unlock()
 	if error != nil {
 		InfoLogger.Println(fmt.Sprintf("Failed To Update Object: %s", error))
 		return false, exceptions.OperationFailed("Update", error)

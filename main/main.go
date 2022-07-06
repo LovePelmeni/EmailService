@@ -20,6 +20,14 @@ var (
 
 var (
 	port = os.Getenv("APPLICATION_PORT")
+
+	OrderApplicationHost = os.Getenv("ORDER_APPLICATION_HOST")
+	OrderApplicationPort = os.Getenv("ORDER_APPLICATION_PORT")
+	ProductApplicationHost = os.Getenv("PRODUCT_APPLICATION_HOST")
+	ProductApplicationPort = os.Getenv("PRODUCT_APPLICATION_PORT")
+
+	ApplicationHost = os.Getenv("APPLICATION_HOST")
+	ApplicationPort = os.Getenv("APPLICATION_PORT")
 )
 
 func main() {
@@ -29,11 +37,14 @@ func main() {
 
 	// Cors Policy Goes There...
 
-	AllowedOrigins := []string{} 
-	AllowedMethods := []string{} 
-	AllowedHeaders := []string{}
+	AllowedOrigins := []string{
+		fmt.Sprintf("http://%s:%s", OrderApplicationHost, OrderApplicationPort),
+    	fmt.Sprintf("http://%s:%s", ProductApplicationHost, ProductApplicationPort), 
+		fmt.Sprintf("http://%s:%s", ApplicationHost, ApplicationPort),
+	} 
+	AllowedMethods := []string{"GET"} 
+	AllowedHeaders := []string{"*"}
 
-	
 	router.Use(cors.New(
 		cors.Config{
 			AllowOrigins: AllowedOrigins,

@@ -11,6 +11,8 @@ ENV PATH="/bin:$PATH"
 COPY ./go.mod ./go.sum ./ 
 COPY . .
 RUN go mod download && go get -u && go mod vendor   
+RUN go test ./tests/mongo_tests/tests.go && \
+go test ./tests/emails/emails.go 
 RUN go build -o main ./main/main.go 
 ENTRYPOINT ["go", "run", "./main/main.go"]
 
