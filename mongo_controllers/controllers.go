@@ -28,6 +28,18 @@ var (
 	EmailCollectionName = os.Getenv("EMAIL_COLLECTION_NAME")
 )
 
+type MongoDatabaseInterface interface {
+	Connect() (*mongo.Client, error)
+
+	// CUD MongoDB Methods
+	SaveDocument() (bool, error)
+	UpdateDocument() (bool, error)
+	DeleteDocument() (bool, error)
+
+	// Getter MongoDB Methods.
+	GetDocument() (bool, error)
+	GetDocumentList() (bool, error)
+}
 type MongoDatabase struct {
 	mutex    sync.RWMutex
 	User     string
@@ -103,7 +115,7 @@ func GenerateMongoDocumentIndexUuid() (string, error) {
 
 // going to be a goroutine...
 
-func (this *MongoDatabase) saveDocument(document *EmailDocument) (bool, error) {
+func (this *MongoDatabase) SaveDocument(document *EmailDocument) (bool, error) {
 
 	Session, Exception := this.Connect()
 	if errors.Is(Exception, mongo.ErrWrongClient) ||
@@ -131,7 +143,7 @@ func (this *MongoDatabase) saveDocument(document *EmailDocument) (bool, error) {
 	return true, nil
 }
 
-func (this *MongoDatabase) updateDocument(documentUuid string,
+func (this *MongoDatabase) UpdateDocument(documentUuid string,
 	UpdatedData ...map[string]string) (bool, error) {
 
 	if none := reflect.TypeOf(UpdatedData).NumField(); none == 0 {
@@ -158,7 +170,7 @@ func (this *MongoDatabase) updateDocument(documentUuid string,
 	return true, nil
 }
 
-func (this *MongoDatabase) deleteDocument(DocumentUuid string) (bool, error) {
+func (this *MongoDatabase) DeleteDocument(DocumentUuid string) (bool, error) {
 	connection, error := this.Connect()
 	Collection := connection.Database(this.DbName).Collection(EmailCollectionName)
 
@@ -181,7 +193,7 @@ var document EmailDocument
 
 // getter controllers...
 
-func (this *MongoDatabase) getDocument(DocumentUuid string) (*mongo.SingleResult, error) {
+func (this *MongoDatabase) GetDocument(DocumentUuid string) (*mongo.SingleResult, error) {
 
 	connection, error := this.Connect()
 	if error != nil {
@@ -200,7 +212,7 @@ func (this *MongoDatabase) getDocument(DocumentUuid string) (*mongo.SingleResult
 	return Document, nil
 }
 
-func (this *MongoDatabase) getDocumentList() (*mongo.Cursor, error) {
+func (this *MongoDatabase) GetDocumentList() (*mongo.Cursor, error) {
 	connection, error := this.Connect()
 	if error != nil {
 		return nil, nil

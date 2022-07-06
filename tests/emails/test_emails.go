@@ -2,7 +2,7 @@ package test_emails
 
 import (
 	"testing"
-
+	"github.com/LovePelmeni/OnlineStore/EmailService/mocks/mock_emails"
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ type EmailSenderSuite struct {
 	Controller                  *gomock.Controller
 	EmailMessage                string
 	EmailReceiver               string
-	MockedEmailSenderController interface{}
+	MockedEmailSenderController *mock_emails.NewMockEmailSenderInterface
 }
 
 func (this *EmailSenderSuite) SetupTest() {
