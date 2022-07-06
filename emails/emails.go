@@ -3,18 +3,22 @@ package emails
 import (
 	"errors"
 	"fmt"
+
 	"log"
 	"net"
 	"os"
+
 	"strings"
-
-	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
 	"context"
+
 	"strconv"
 	"time"
+
+	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
+	"github.com/LovePelmeni/OnlineStore/EmailService/mongo_controllers"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	mail "github.com/xhit/go-simple-mail/v2"
 )
@@ -26,13 +30,15 @@ var (
 	InfoLogger  *log.Logger
 )
 
-var (
-	AcceptBackgroundImage = EmailBackgroundImage{file: nil}
-	RejectBackgroundImage = EmailBackgroundImage{file: nil}
 
-	DefaultEmailNotificationImageRoot = "/file.png"
+// Default Themes for Accepted and Rejected Images.
+var (
+	AcceptBackgroundImage = mail.File{Data: []byte(""), Name: "AcceptedOrderEmail.png"}
+	RejectBackgroundImage = mail.File{Data: []byte(""), Name: "RejectedOrderEmail.png"}
 )
 
+
+type Error error 
 // grpc Server Controllers
 
 type grpcEmailServer struct {
@@ -74,6 +80,27 @@ func (this *grpcEmailServer) SendEmail(context context.Context,
 	if error != nil {
 		sended = false
 	}
+
+	go func(customerEmail string, Message string){
+		// Saving Email to Mongo database Asynchronously...
+		mongoDatabase := mongo_controllers.MongoDatabase{
+			User: os.Getenv("MONGO_DATABASE_USER"),
+			Password: os.Getenv("MONGO_DATABASE_PASSWORD"),
+			Host: os.Getenv("MONGO_DATABASE_HOST"),
+			Port: os.Getenv("MONGO_DATABASE_PORT"),
+		}
+		Document := mongo_controllers.EmailDocument{
+			Uuid: primitive.NewObjectID(),
+			Message: Message,
+			EmailReceiver: customerEmail,
+		}
+		response, error := mongoDatabase.SaveDocument(&Document)
+		if response && error == nil {DebugLogger.Println(fmt.Sprintf("Document has been saved"))}else{
+			DebugLogger.Println(fmt.Sprintf("Failed TO Save Email Document, Exception %s", error))
+		}
+	}(sender.CustomerEmail, sender.Message)
+
+
 	DebugLogger.Println(fmt.Sprintf("Email has been sended to %s",
 		sender.CustomerEmail))
 	return &grpcControllers.EmailResponse{Delivered: sended}, nil
@@ -177,13 +204,11 @@ func createSMTPClient() (*mail.SMTPClient, error) {
 // Sends Email Notification using mail golang SDK
 func (this *EmailSender) SendEmailNotification(BackgroundImage ...EmailBackgroundImage) (bool, error) {
 	// some logic of sending email...
-	var ValidatedImage = mail.File{}
+	var ValidatedImage = mail.File{} // default theme for the email is going to be Empty file.
 	FileExtension := "file-extension" // need to parse the file extension..
 	client, error := createSMTPClient()
 	
-	if error != nil {
-		return false, nil
-	}
+	if error != nil {return false, nil}
 
 	if notNone := len(BackgroundImage); notNone != 0 {
 		if error := BackgroundImage[0].validateFile(); error == nil {
@@ -202,10 +227,32 @@ func (this *EmailSender) SendEmailNotification(BackgroundImage ...EmailBackgroun
 	EmailMessage.Attach(&ValidatedImage)
 	sended_error := EmailMessage.Send(client)
 
-	if sended_error != nil {
-		return false, sended_error
+	switch sended_error.(Error) {
+
+	case nil:
+		go func(customerEmail string, Message string){
+			// Saving Email to Mongo database Asynchronously...
+			mongoDatabase := mongo_controllers.MongoDatabase{
+				User: os.Getenv("MONGO_DATABASE_USER"),
+				Password: os.Getenv("MONGO_DATABASE_PASSWORD"),
+				Host: os.Getenv("MONGO_DATABASE_HOST"),
+				Port: os.Getenv("MONGO_DATABASE_PORT"),
+			}
+			Document := mongo_controllers.EmailDocument{
+				Uuid: primitive.NewObjectID(),
+				Message: Message,
+				EmailReceiver: customerEmail,
+			}
+			response, error := mongoDatabase.SaveDocument(&Document)
+			if response && error == nil {DebugLogger.Println(fmt.Sprintf("Document has been saved"))}else{
+				DebugLogger.Println(fmt.Sprintf("Failed TO Save Email Document, Exception %s", error))
+			}
+		}(this.CustomerEmail, this.Message)
+		return true, nil
+
+		default:
+			return false, errors.New("Failed To Send Notification.")
 	}
-	return true, nil
 }
 
 func (this *EmailSender) sendDefaultEmail(backgroundImage ...EmailBackgroundImage) (bool, error) {
@@ -237,3 +284,6 @@ func (this *EmailSender) sendAcceptEmail(BackgroundImage ...EmailBackgroundImage
 		return true, nil
 	}
 }
+
+
+

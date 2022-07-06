@@ -30,6 +30,13 @@ var (
 	ApplicationPort = os.Getenv("APPLICATION_PORT")
 )
 
+// Nginx Proxy configuration... 
+
+var (
+	NGINX_PROXY_HOST = os.Getenv("NGINX_PROXY_HOST")
+	NGINX_PROXY_PORT = os.Getenv("NGINX_PROXY_PORT")
+)
+
 func main() {
 	// Creating Default HTTP Router for the application.. 
 
@@ -53,6 +60,11 @@ func main() {
 			AllowCredentials: true,
 		},
 	))
+
+	// Allowed Proxies...
+	router.SetTrustedProxies([]string{
+	fmt.Sprintf("%s:%s", NGINX_PROXY_HOST, NGINX_PROXY_PORT)})
+
 
 	// HTTP EndPoints Goes There.
 
