@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 	"time"
-	"fmt"
 	mock_mongo "github.com/LovePelmeni/OnlineStore/EmailService/mocks/mongo"
 	"github.com/LovePelmeni/OnlineStore/EmailService/mongo_controllers"
 	"github.com/fossoreslp/go-uuid-v4"
@@ -43,14 +42,6 @@ func (this *MongoConsumerSuite) SetupTest() {
 	emailMessage := "Some Email Message."
 
 	this.Controller = gomock.NewController(this.T())
-	generatedUuid, error := uuid.NewString()
-	generatedUuid += fmt.Sprintf(
-		"%s", time.Now().String())
-
-	if error != nil && len(generatedUuid) == 0 {
-		generatedUuid = fmt.Sprintf("%s", time.Now().String())
-	}
-
 	this.Document = &mongo_controllers.EmailDocument{
 		Uuid:          primitive.NewObjectID(),
 		EmailReceiver: customerEmail,
@@ -130,3 +121,5 @@ func (this *MongoConsumerSuite) TestDeleteDocument(t *testing.T) {
 	this.MongoConnection.DeleteDocument(
 	TestDocument.Uuid.String())
 }
+
+

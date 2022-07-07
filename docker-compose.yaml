@@ -61,7 +61,7 @@ services:
       - 27017:27017 
       - 29017:29017 
     volumes:
-      - ./mongo/docker-entrypoint-init.d/:/etc/mongod/docker-entrypoint-init.d/
+      - ./mongo/test-docker-entrypoint-init.d/:/etc/mongod/docker-entrypoint-init.d/
       - ./mongo/db/data:/etc/mongod/db/data 
     networks:
       - go_store_network 

@@ -28,18 +28,26 @@ var (
 	EmailCollectionName = os.Getenv("EMAIL_COLLECTION_NAME")
 )
 
+
+//go:generate mockgen -destination=mocks/mongo.go --build_flags=--mod=mod . MongoDatabaseInterface
+
 type MongoDatabaseInterface interface {
+
 	Connect() (*mongo.Client, error)
 
 	// CUD MongoDB Methods
-	SaveDocument() (bool, error)
-	UpdateDocument() (bool, error)
-	DeleteDocument() (bool, error)
+	SaveDocument(Document *EmailDocument) (bool, error)
+
+	UpdateDocument(DocumentObjectId string,
+    UpdatedDocumentData ...map[string]string) (bool, error)
+
+	DeleteDocument(DocumentObjectId string) (bool, error)
 
 	// Getter MongoDB Methods.
-	GetDocument() (bool, error)
+	GetDocument(DocumentObjectId string) (bool, error)
 	GetDocumentList() (bool, error)
 }
+
 type MongoDatabase struct {
 	User     string
 	Password string
@@ -145,9 +153,10 @@ func (this *MongoDatabase) SaveDocument(document *EmailDocument) (bool, error) {
 func (this *MongoDatabase) UpdateDocument(documentUuid string,
 	UpdatedData ...map[string]string) (bool, error) {
 
-	if none := reflect.TypeOf(UpdatedData).NumField(); none == 0 {
-		return false, exceptions.ConnectionFailed()
+	if none := len(UpdatedData); none == 0 {
+		return false, exceptions.EmtpyDocumentError()
 	}
+
 	Connection, error := this.Connect()
 	if errors.Is(error, mongo.ErrWrongClient) || errors.Is(error, mongo.ErrClientDisconnected) {
 		return false, exceptions.InvalidMongoClientError()
@@ -224,3 +233,7 @@ func (this *MongoDatabase) GetDocumentList() (*mongo.Cursor, error) {
 	}
 	return Documents, nil
 }
+
+
+
+

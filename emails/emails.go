@@ -10,6 +10,7 @@ import (
 
 	"strings"
 	"context"
+	"net/http"
 
 	"strconv"
 	"time"
@@ -38,6 +39,13 @@ var (
 )
 
 
+// GRPC Server Credentials 
+
+var (
+	grpcHost = os.Getenv("GRPC_SERVER_HOST")
+	grpcPort = os.Getenv("GRPC_SERVER_PORT")
+)
+
 type Error error 
 // grpc Server Controllers
 
@@ -50,8 +58,7 @@ var serverInterface grpcEmailServer
 
 func CreategRPCServer() {
 	// Logic Of Setting up gRPC Server, and replacing interface.
-	port := os.Getenv("GRPC_APPLICATION_PORT")
-	listener, error := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	listener, error := net.Listen("tcp", fmt.Sprintf("%s:%s", grpcHost, grpcPort))
 	if error != nil {
 		panic("Server failed to create a listener..")
 	}
@@ -117,14 +124,14 @@ func (this *grpcEmailServer) SendOrderEmail(context context.Context,
 	switch RequestOrderEmailParams.Status {
 
 	case grpcControllers.OrderStatus_ACCEPTED:
-		sended, error := sender.sendAcceptEmail()
+		sended, error := sender.SendAcceptEmail()
 		if error != nil {
 			sended = false
 		}
 		return &grpcControllers.EmailResponse{Delivered: sended}, nil
 
 	case grpcControllers.OrderStatus_REJECTED:
-		sended, error := sender.sendRejectEmail()
+		sended, error := sender.SendRejectEmail()
 		if error != nil {
 			sended = false
 		}
@@ -150,6 +157,9 @@ func (this *EmailBackgroundImage) validateFile() error {
 	}
 	return errors.New("Invalid File Type")
 }
+
+
+//go:generate mockgen -destination=mocks/emails.go --build_flags=--mod=mod . EmailSenderInterface
 
 type EmailSenderInterface interface { 
 
@@ -205,13 +215,15 @@ func createSMTPClient() (*mail.SMTPClient, error) {
 func (this *EmailSender) SendEmailNotification(BackgroundImage ...EmailBackgroundImage) (bool, error) {
 	// some logic of sending email...
 	var ValidatedImage = mail.File{} // default theme for the email is going to be Empty file.
-	FileExtension := "file-extension" // need to parse the file extension..
+	FileExtension := "" // default is equals to empty string, because of uncertained file extension.
 	client, error := createSMTPClient()
 	
 	if error != nil {return false, nil}
 
 	if notNone := len(BackgroundImage); notNone != 0 {
 		if error := BackgroundImage[0].validateFile(); error == nil {
+
+			FileExtension = strings.Split(http.DetectContentType(BackgroundImage[0].file), "/")[1]
 			ValidatedImage = mail.File{
 				Data: BackgroundImage[0].file,
 				Name: fmt.Sprintf("%s.%s", time.Now().String(), FileExtension),
@@ -262,7 +274,7 @@ func (this *EmailSender) sendDefaultEmail(backgroundImage ...EmailBackgroundImag
 
 // Method Is used for sending Email Notification to the customer Email, that the order has been rejected.
 // Prepares the message and calls `NotifyOrder` method that sends email.
-func (this *EmailSender) sendRejectEmail(BackgroundImage ...EmailBackgroundImage) (bool, error) {
+func (this *EmailSender) SendRejectEmail(BackgroundImage ...EmailBackgroundImage) (bool, error) {
 
 	sended, error := this.SendEmailNotification()
 	if sended != true || error != nil {
@@ -274,7 +286,7 @@ func (this *EmailSender) sendRejectEmail(BackgroundImage ...EmailBackgroundImage
 }
 
 // Method Is used for sending Email Notification to the customer Email, that the order has been Accepted.
-func (this *EmailSender) sendAcceptEmail(BackgroundImage ...EmailBackgroundImage) (bool, error) {
+func (this *EmailSender) SendAcceptEmail(BackgroundImage ...EmailBackgroundImage) (bool, error) {
 
 	sended, error := this.SendEmailNotification()
 	if sended != true || error != nil {
@@ -284,6 +296,3 @@ func (this *EmailSender) sendAcceptEmail(BackgroundImage ...EmailBackgroundImage
 		return true, nil
 	}
 }
-
-
-

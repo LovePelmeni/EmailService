@@ -10,6 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails"
+
+	"io/ioutil"
+
+	"encoding/json"
+
+	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -36,6 +43,26 @@ var (
 	NGINX_PROXY_HOST = os.Getenv("NGINX_PROXY_HOST")
 	NGINX_PROXY_PORT = os.Getenv("NGINX_PROXY_PORT")
 )
+
+var (
+	grpcPort = os.Getenv("GRPC_SERVER_PORT")
+	grpcHost = os.Getenv("GRPC_SERVER_HOST")
+)
+
+func CreateClient() (grpcControllers.EmailSenderClient, error){
+	connection, error := grpc.Dial(fmt.Sprintf("%s:%s", grpcHost, grpcPort))
+	if error != nil {panic(error)}
+	client := grpcControllers.NewEmailSenderClient(connection)
+	return client, nil
+}
+
+type RequestHTTPMessage struct {
+	message string 
+}
+
+var reqMessage RequestHTTPMessage
+
+
 
 func main() {
 	// Creating Default HTTP Router for the application.. 
@@ -67,6 +94,72 @@ func main() {
 
 
 	// HTTP EndPoints Goes There.
+
+
+	// GRPCLient via HTTP Endpoints...
+
+	router.POST("send/default/email/:customerEmail/", func (context *gin.Context){
+		customerEmail := context.Param("customerEmail")
+		client, error := CreateClient()
+		decodedBytes, error := ioutil.ReadAll(context.Request.Body)
+		decoded := json.Unmarshal(decodedBytes, &reqMessage)
+		if decoded != nil {panic("Failed To Decoded Request Body.")}
+
+		if error != nil {panic(error)}
+		grpcRequestParams := grpcControllers.DefaultEmailParams{
+			CustomerEmail: customerEmail,
+			EmailMessage: reqMessage.message,
+		}
+		response, error := client.SendEmail(context, &grpcRequestParams)
+		context.JSON(http.StatusOK, gin.H{"Delivered": response.Delivered})
+	})
+
+	router.POST("send/order/accept/email/:customerEmail", func(context *gin.Context) {
+
+		customerEmail := context.Param("customerEmail")
+		client, error := CreateClient()
+		if error != nil {panic("Failed To Create Client.")}
+
+		decodedBytes, error := ioutil.ReadAll(context.Request.Body)
+		decoded := json.Unmarshal(decodedBytes, &reqMessage)
+
+		if decoded != nil {panic("Failed To Decode Body.")}
+		orderEmailParams := grpcControllers.OrderEmailParams{
+
+			Status: grpcControllers.OrderStatus_ACCEPTED,
+			CustomerEmail: customerEmail,
+			Message: reqMessage.message,
+
+		}
+		response, error := client.SendOrderEmail(
+		context, &orderEmailParams)
+
+		context.JSON(http.StatusOK, 
+		gin.H{"Delivered": response.Delivered})
+	})
+
+	router.POST("send/order/accept/email/:customerEmail", func(context *gin.Context) {
+		
+		customerEmail := context.Param("customerEmail")
+		client, error := CreateClient()
+		if error != nil {panic("Failed To Create Client.")}
+
+		decodedBytes, error := ioutil.ReadAll(context.Request.Body)
+		decoded := json.Unmarshal(decodedBytes, &reqMessage)
+
+		if decoded != nil {panic("Failed To Decode Body.")}
+		orderEmailParams := grpcControllers.OrderEmailParams{
+
+			Status: grpcControllers.OrderStatus_REJECTED,
+			CustomerEmail: customerEmail,
+			Message: reqMessage.message,
+		}
+		response, error := client.SendOrderEmail(
+		context, &orderEmailParams)
+		context.JSON(http.StatusOK, 
+		gin.H{"Delivered": response.Delivered})
+	})
+
 
 	router.GET("/healthcheck/", func(context *gin.Context) {
 		context.JSON(http.StatusOK, nil)
