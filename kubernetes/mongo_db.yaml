@@ -1,0 +1,23 @@
+apiVersion: v1 
+kind: deployment 
+metadata:
+  name: email-service-mongo-database 
+  labels:
+    app: mongo_database 
+  
+spec:
+  replicas: 3 
+  selector:
+    matchLabels:
+      app: mongo_database 
+    template:
+      metadata: 
+        labels:
+          app: mongo_database 
+      spec:
+        containers:
+          - name: mongo_emails_service_database 
+          image: mongo:latest 
+          ports:
+            - containerPort: 80 
+            

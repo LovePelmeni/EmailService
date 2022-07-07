@@ -1,0 +1,24 @@
+apiVersion: v1 
+kind: Deployment 
+
+metadata:
+  name: email-application-service 
+  labels:
+    app: email-application_service  
+
+  spec:
+    replicas: 3 
+    selector:
+      matchLabels:
+        app: email_service_application 
+      template:
+        metadata: 
+          labels:
+            app: email_service_application 
+        spec:
+          containers:
+          - name: email_service_application 
+          build: . 
+          ports:
+            - containerPort: 8000 
+          
