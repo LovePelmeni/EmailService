@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"reflect"
 	"sync"
 	"time"
 
@@ -233,7 +232,6 @@ func (this *MongoDatabase) GetDocumentList() (*mongo.Cursor, error) {
 	}
 	return Documents, nil
 }
-
 
 
 

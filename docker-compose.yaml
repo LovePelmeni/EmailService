@@ -32,19 +32,21 @@ services:
     container_name: mongo_database 
     image: mongo:latest 
     environment:
-      MONGO_INITD_DATABASE: emails_db 
-      MONGO_INITD_USERNAME: mongo_user 
-      MONGO_INITD_PASSWORD: mongo_password 
+      MONGO_INITDB_DATABASE: emails_db 
+      MONGO_INITDB_ROOT_USERNAME: mongo_user 
+      MONGO_INITDB_ROOT_PASSWORD: mongo_password 
     volumes:
-      - ./mongo/docker-entrypoint-init.d/:/etc/mongod/docker-entrypoint-init.d/
-      - ./mongo/db/data:/etc/mongod/db/data
+      - ./mongo/docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/
+      - ./mongo/db/data:/data/db
     ports:
-      - 27018:27018 
-      - 29018:29018
+      - 27017:27017
+      - 29017:29017
     networks:
       - go_store_network 
+    command:
+      - mongod --port 27017
     healthcheck:
-      test: echo `db.runCommand("ping"),ok` | mongo mongo_database:27018/emails_db --quiet
+      test: echo `db.runCommand("ping"),ok` | mongo mongo_database:27017/emails_db --quiet
       retries: 5 
       timeout: 10s 
       interval: 10s
@@ -54,15 +56,17 @@ services:
     container_name: test_mongo_database 
     image: mongo:latest 
     environment:
-      MONGO_INITD_DATABASE: emails_test_db 
-      MONGO_INITD_USERNAME: mongo_user 
-      MONGO_INITD_PASSWORD: mongo_password 
+      MONGO_INITDB_DATABASE: emails_test_db 
+      MONGO_INITDB_ROOT_USERNAME: mongo_user 
+      MONGO_INITDB_ROOT_PASSWORD: mongo_password 
     ports:
-      - 27017:27017 
-      - 29017:29017 
+      - 27018:27018
+      - 29018:29018
     volumes:
-      - ./mongo/test-docker-entrypoint-init.d/:/etc/mongod/docker-entrypoint-init.d/
-      - ./mongo/db/data:/etc/mongod/db/data 
+      - ./mongo/test-docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/
+      - ./mongo/db/data:/data/db
+    command:
+      - mongod --port 27018
     networks:
       - go_store_network 
     healthcheck:
@@ -70,9 +74,11 @@ services:
       retries: 5 
       timeout: 10s 
       interval: 10s 
+      start_period: 30s 
       
 networks:
   go_store_network:
     external: true 
     name: go_store_network 
     
+

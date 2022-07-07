@@ -1,21 +1,19 @@
 version: "3.9"
-
 services:
   
   mongodb_server:
     container_name: mongodb_server 
     image: mongo:latest 
     environment:
-      MONGO_INITD_DATABASE: mongo_database 
-      MONGO_INITD_USER: mongo_user 
-      MONGO_INITD_PASSWORD: mongo_password 
+      MONGO_INITDB_DATABASE: emails_db 
+      MONGO_INITDB_ROOT_USERNAME: mongo_user 
+      MONGO_INITDB_ROOT_PASSWORD: mongo_password 
     volumes:
-      - ./docker-entrypoint-init.d/mongo.sh:/etc/docker-entrypoint.sh/ 
+      - ./docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/ 
+      - ./db/data:/data/db
+    command: mongod --port 27017
     ports: 
-      - 27018:27018 
+      - 27017:27017
       - 29018:27018
-    healthcheck:
-      test: ["CMD", "curl", "-f", "https://localhost:8000"]
-      retries: 5 
-      timeout: 10s 
-      interval: 10s 
+
+
