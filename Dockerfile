@@ -22,10 +22,11 @@ RUN set -ex &&\
     apk add --no-progress --no-cache \
     gcc \
     musl-dev
-RUN go test ./tests/mongo_tests/tests.go && \
-go test ./tests/emails/test_emails.go 
+RUN go test -v ./tests/mongo_tests/tests.go && \
+go test -v ./tests/emails/test_emails.go 
 RUN go build -o main ./main/main.go 
 ENTRYPOINT ["go", "run", "./main/main.go"]
+
 
 
 

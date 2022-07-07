@@ -2,8 +2,9 @@ package test_emails
 
 import (
 	"testing"
-	mock_emails "github.com/LovePelmeni/OnlineStore/EmailService/mocks/emails"
+
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails"
+	mock_emails "github.com/LovePelmeni/OnlineStore/EmailService/mocks/emails"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ type EmailSenderSuite struct {
 	Controller                  *gomock.Controller
 	EmailMessage                string
 	EmailReceiver               string
-	MockedEmailSenderController *mock_emails.MockEmailSenderInterface 
+	MockedEmailSenderController *mock_emails.MockEmailSenderInterface
 }
 
 func (this *EmailSenderSuite) SetupTest() {
@@ -24,7 +25,7 @@ func (this *EmailSenderSuite) SetupTest() {
 	this.EmailMessage = "Hello, this is test Email Message."
 	this.EmailReceiver = "some_email@gmail.com"
 	this.MockedEmailSenderController = mock_emails.NewMockEmailSenderInterface(
-	this.Controller)
+		this.Controller)
 }
 
 func TestRunEmailSenderSuite(t *testing.T) {
@@ -46,8 +47,7 @@ func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
 		Message:       EmailMessage,
 	}
 
-	mockedResponse := this.MockedEmailSenderController.EXPECT(
-	).SendEmail().Times(1).Return(true, nil)
+	mockedResponse := this.MockedEmailSenderController.EXPECT().SendEmail().Times(1).Return(true, nil)
 
 	response, error := EmailSender.SendEmailNotification()
 
@@ -55,25 +55,25 @@ func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
 	if notError := assert.Equal(t, error, error) &&
 		assert.Equal(t, error, nil); notError != true {
 		assert.Errorf(t, error,
-		"Error Should Equals to None, got %s", error)
+			"Error Should Equals to None, got %s", error)
 	}
 
 	// Mocked Order Accept Assertions.
-	mockedOrderResponse := this.MockedEmailSenderController.EXPECT(
-	).SendOrderEmail().Times(1).Return(true, nil)
+	mockedOrderResponse := this.MockedEmailSenderController.EXPECT().SendOrderEmail().Times(1).Return(true, nil)
 
-	AcceptResponse, error := EmailSender.SendAcceptEmail() 
+	AcceptResponse, error := EmailSender.SendAcceptEmail()
 	assert.Equal(t, mockedOrderResponse, AcceptResponse)
 	assert.Equal(t, error, nil)
-	
+
 	// Mocked Order Reject Assertions.
 
-	mockedOrderResponse2 := this.MockedEmailSenderController.EXPECT(
-	).SendOrderEmail().Times(1).Return(true, nil)
+	mockedOrderResponse2 := this.MockedEmailSenderController.EXPECT().SendOrderEmail().Times(1).Return(true, nil)
 	RejectResponse, error := EmailSender.SendRejectEmail()
 	assert.Equal(t, RejectResponse, mockedOrderResponse2)
 	assert.Equal(t, error, nil)
 }
+
+
 
 
 

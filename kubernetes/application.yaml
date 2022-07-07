@@ -1,24 +1,45 @@
 apiVersion: v1 
 kind: Deployment 
-
 metadata:
-  name: email-application-service 
+  name: email_application_service 
   labels:
-    app: email-application_service  
+    app: email_application_service  
 
   spec:
     replicas: 3 
     selector:
       matchLabels:
-        app: email_service_application 
+        app: email_application_service 
       template:
         metadata: 
           labels:
-            app: email_service_application 
+            app: email_application_service 
         spec:
           containers:
           - name: email_service_application 
-          build: . 
-          ports:
-            - containerPort: 8000 
-          
+            image: crazycoderrr/emails_service # this image should be installed
+            ports:
+            - protocol: TCP 
+              port: 8000 
+              targetPort: 8000
+            envFrom:
+              - secretRef:
+                name: ProjectSecrets
+            restartPolicy: onFailure 
+
+            resources:
+              requests:
+                cpu: "0.5"
+                memory: "3Gi"
+              limits:
+                cpu: "0.6"
+                memory: "3Gi"
+            
+            livenessProbe:
+              httpGet:
+                path: avuator/health/liveness 
+              initialSeconds: 20 
+              startPeriod: 20 
+
+
+

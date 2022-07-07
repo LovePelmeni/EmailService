@@ -27,18 +27,16 @@ var (
 	EmailCollectionName = os.Getenv("EMAIL_COLLECTION_NAME")
 )
 
-
 //go:generate mockgen -destination=mocks/mongo.go --build_flags=--mod=mod . MongoDatabaseInterface
 
 type MongoDatabaseInterface interface {
-
 	Connect() (*mongo.Client, error)
 
 	// CUD MongoDB Methods
 	SaveDocument(Document *EmailDocument) (bool, error)
 
 	UpdateDocument(DocumentObjectId string,
-    UpdatedDocumentData ...map[string]string) (bool, error)
+		UpdatedDocumentData ...map[string]string) (bool, error)
 
 	DeleteDocument(DocumentObjectId string) (bool, error)
 
@@ -140,7 +138,7 @@ func (this *MongoDatabase) SaveDocument(document *EmailDocument) (bool, error) {
 	DebugLogger.Println("Inserted.")
 	_ = inserted
 
-	defer document.mutex.Unlock()
+	document.mutex.Unlock()
 
 	if errors.Is(error, mongo.ErrNilValue) ||
 		errors.Is(error, mongo.ErrNilDocument) {
@@ -232,6 +230,3 @@ func (this *MongoDatabase) GetDocumentList() (*mongo.Cursor, error) {
 	}
 	return Documents, nil
 }
-
-
-

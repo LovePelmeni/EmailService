@@ -8,12 +8,14 @@ import (
 	"net"
 	"os"
 
-	"strings"
+	"sync"
 	"context"
 	"net/http"
+	"strings"
 
 	"strconv"
 	"time"
+	"io/ioutil"
 
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
 	"github.com/LovePelmeni/OnlineStore/EmailService/mongo_controllers"
@@ -31,6 +33,16 @@ var (
 	InfoLogger  *log.Logger
 )
 
+func init() {
+	LogFile, error := os.OpenFile("emails.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if error != nil {
+		fmt.Print("FAILED TO SET UP LOGGING IN EMAILS.GO")
+	}
+	DebugLogger = log.New(LogFile, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	InfoLogger = log.New(LogFile, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	ErrorLogger = log.New(LogFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	WarnLogger = log.New(LogFile, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
 
 // Default Themes for Accepted and Rejected Images.
 var (
@@ -38,15 +50,15 @@ var (
 	RejectBackgroundImage = mail.File{Data: []byte(""), Name: "RejectedOrderEmail.png"}
 )
 
-
-// GRPC Server Credentials 
+// GRPC Server Credentials
 
 var (
 	grpcHost = os.Getenv("GRPC_SERVER_HOST")
 	grpcPort = os.Getenv("GRPC_SERVER_PORT")
 )
 
-type Error error 
+type Error error
+
 // grpc Server Controllers
 
 type grpcEmailServer struct {
@@ -66,11 +78,11 @@ func CreategRPCServer() {
 	grpcControllers.RegisterEmailSenderServer(server, &serverInterface)
 	reflection.Register(server)
 
-	defer listener.Close()
 	if error := server.Serve(listener); error != nil {
 		panic(fmt.Sprintf(
 			"Failed to Start gRPC Server Error Occurred. %s", error))
 	}
+	defer listener.Close()
 }
 
 // Sends Default Email Message to the client with Optional background Image Specified..
@@ -87,29 +99,7 @@ func (this *grpcEmailServer) SendEmail(context context.Context,
 	if error != nil {
 		sended = false
 	}
-
-	go func(customerEmail string, Message string){
-		// Saving Email to Mongo database Asynchronously...
-		mongoDatabase := mongo_controllers.MongoDatabase{
-			User: os.Getenv("MONGO_DATABASE_USER"),
-			Password: os.Getenv("MONGO_DATABASE_PASSWORD"),
-			Host: os.Getenv("MONGO_DATABASE_HOST"),
-			Port: os.Getenv("MONGO_DATABASE_PORT"),
-		}
-		Document := mongo_controllers.EmailDocument{
-			Uuid: primitive.NewObjectID(),
-			Message: Message,
-			EmailReceiver: customerEmail,
-		}
-		response, error := mongoDatabase.SaveDocument(&Document)
-		if response && error == nil {DebugLogger.Println(fmt.Sprintf("Document has been saved"))}else{
-			DebugLogger.Println(fmt.Sprintf("Failed TO Save Email Document, Exception %s", error))
-		}
-	}(sender.CustomerEmail, sender.Message)
-
-
-	DebugLogger.Println(fmt.Sprintf("Email has been sended to %s",
-		sender.CustomerEmail))
+	DebugLogger.Println(fmt.Sprintf("Email has been sended to ..."))
 	return &grpcControllers.EmailResponse{Delivered: sended}, nil
 }
 
@@ -139,41 +129,38 @@ func (this *grpcEmailServer) SendOrderEmail(context context.Context,
 
 	default:
 		return &grpcControllers.EmailResponse{Delivered: true}, nil
+
 	}
 }
 
 // Emails API
 
 type EmailBackgroundImage struct {
-	file []byte
+	file []byte 
 }
 
-func (this *EmailBackgroundImage) validateFile() error {
-	file := os.File{}
-	for _, extension := range []string{"png", "jpeg", "jpg"} {
-		if valid := strings.Split(file.Name(), ".")[1]; valid == extension {
-			return nil
-		}
+func (this *EmailBackgroundImage) ToMailFile() (mail.File){
+	mailFile := mail.File{
+		Data: this.file, 
+		Name: "File",
 	}
-	return errors.New("Invalid File Type")
+	return mailFile 
 }
-
 
 //go:generate mockgen -destination=mocks/emails.go --build_flags=--mod=mod . EmailSenderInterface
 
-type EmailSenderInterface interface { 
+type EmailSenderInterface interface {
 
-	// Interface that represents Email Sender. 
+	// Interface that represents Email Sender.
 	// The Implementation should have attributes:
-		// 1. CustomerEmail 
-		// 2. Message 
+	// 1. CustomerEmail
+	// 2. Message
 
-	CustomerEmail() string 
-	Message() string 
+	CustomerEmail() string
+	Message() string
 	SendEmail() (bool, error)
 	SendOrderEmail() (bool, error)
 }
-
 
 type EmailSender struct {
 	CustomerEmail string
@@ -190,80 +177,101 @@ var (
 // Creates Default SMTP Client...
 func createSMTPClient() (*mail.SMTPClient, error) {
 	// creates SMTP Client for managing emails.
-	port, error := strconv.Atoi(os.Getenv("SMTP_PORT"))
+	port, error := strconv.Atoi(os.Getenv("SMTP_SERVER_PORT"))
 	if error != nil {
 		return nil, error
 	}
 
 	client := mail.NewSMTPClient()
 	client.Encryption = mail.EncryptionSTARTTLS
-	client.Username = os.Getenv("SMTP_EMAIL")
-	client.Password = os.Getenv("SMTP_PASSWORD")
+	client.Username = os.Getenv("SMTP_SERVER_EMAIL")
+	client.Password = os.Getenv("SMTP_SERVER_PASSWORD")
 	client.Port = port
-	client.Host = os.Getenv("SMTP_HOST")
+	client.Host = os.Getenv("SMTP_SERVER_HOST")
 	client.ConnectTimeout = 10 * time.Second
 	client.SendTimeout = 10 * time.Second
 	smtpClient, error := client.Connect()
 
-	if error == nil && smtpClient != nil {
-		return smtpClient, nil
+	if error != nil {
+		panic(error)
 	}
-	return nil, errors.New("Failed to create SMTP Client.")
+	return smtpClient, nil
 }
 
+
 // Sends Email Notification using mail golang SDK
-func (this *EmailSender) SendEmailNotification(BackgroundImage ...EmailBackgroundImage) (bool, error) {
-	// some logic of sending email...
-	var ValidatedImage = mail.File{} // default theme for the email is going to be Empty file.
-	FileExtension := "" // default is equals to empty string, because of uncertained file extension.
-	client, error := createSMTPClient()
+func (this *EmailSender) SendEmailNotification(
+BackgroundImage ...EmailBackgroundImage) (bool, error) {
+
 	
-	if error != nil {return false, nil}
+	client, error := createSMTPClient()
+
+	if error != nil {
+		panic(error)
+	}
 
 	if notNone := len(BackgroundImage); notNone != 0 {
-		if error := BackgroundImage[0].validateFile(); error == nil {
-
-			FileExtension = strings.Split(http.DetectContentType(BackgroundImage[0].file), "/")[1]
-			ValidatedImage = mail.File{
-				Data: BackgroundImage[0].file,
-				Name: fmt.Sprintf("%s.%s", time.Now().String(), FileExtension),
-			}
-		} else {
-			DebugLogger.Println("Invalid Background Image. Skipping...")
+		FileExtension := strings.Split(http.DetectContentType(BackgroundImage[0].file), "/")[1]
+		ValidatedImage := mail.File{
+			Data: BackgroundImage[0].file,
+			Name: fmt.Sprintf("%s.%s", time.Now().String(), FileExtension),
 		}
+		_ = ValidatedImage 
+		
+	} else {
+		DebugLogger.Println("Invalid Background Image. Skipping...")
 	}
+
+	DebugLogger.Println(fmt.Sprintf("Sended Notification to customer: %s",
+    this.CustomerEmail))
 
 	EmailMessage := mail.NewMSG()
 	EmailMessage.AddTo(this.CustomerEmail).SetSubject(this.Message)
 	EmailMessage.SetBody(mail.TextHTML, EmailHTMLBody)
-	EmailMessage.Attach(&ValidatedImage)
+	// EmailMessage.Attach(&ValidatedImage)
 	sended_error := EmailMessage.Send(client)
+	if sended_error != nil {
+		panic(sended_error)
+	}
 
 	switch sended_error.(Error) {
-
 	case nil:
-		go func(customerEmail string, Message string){
+
+		Group := sync.WaitGroup{}
+		go func(group sync.WaitGroup, customerEmail string, Message string) {
 			// Saving Email to Mongo database Asynchronously...
+
 			mongoDatabase := mongo_controllers.MongoDatabase{
-				User: os.Getenv("MONGO_DATABASE_USER"),
+
+				User:     os.Getenv("MONGO_DATABASE_USER"),
 				Password: os.Getenv("MONGO_DATABASE_PASSWORD"),
-				Host: os.Getenv("MONGO_DATABASE_HOST"),
-				Port: os.Getenv("MONGO_DATABASE_PORT"),
+				Host:     os.Getenv("MONGO_DATABASE_HOST"),
+				Port:     os.Getenv("MONGO_DATABASE_PORT"),
 			}
+
 			Document := mongo_controllers.EmailDocument{
-				Uuid: primitive.NewObjectID(),
-				Message: Message,
+				Uuid:          primitive.NewObjectID(),
+				Message:       Message,
 				EmailReceiver: customerEmail,
 			}
+
 			response, error := mongoDatabase.SaveDocument(&Document)
-			if response && error == nil {DebugLogger.Println(fmt.Sprintf("Document has been saved"))}else{
+
+
+			if response && error == nil {
+				DebugLogger.Println(fmt.Sprintf("Document has been saved"))
+			} else {
 				DebugLogger.Println(fmt.Sprintf("Failed TO Save Email Document, Exception %s", error))
 			}
-		}(this.CustomerEmail, this.Message)
+
+			Group.Done()
+		}(Group, this.CustomerEmail, this.Message)
+
+		Group.Wait()
 		return true, nil
 
-		default:
-			return false, errors.New("Failed To Send Notification.")
+	default:
+		return false, errors.New("Failed To Send Notification.")
 	}
 }
 
@@ -274,9 +282,14 @@ func (this *EmailSender) sendDefaultEmail(backgroundImage ...EmailBackgroundImag
 
 // Method Is used for sending Email Notification to the customer Email, that the order has been rejected.
 // Prepares the message and calls `NotifyOrder` method that sends email.
-func (this *EmailSender) SendRejectEmail(BackgroundImage ...EmailBackgroundImage) (bool, error) {
+func (this *EmailSender) SendRejectEmail() (bool, error) {
 
-	sended, error := this.SendEmailNotification()
+	FileByteData, ReadError := ioutil.ReadFile(os.Getenv("REJECT_ORDER_EMAIL_BACKGROUND_IMAGE_PATH")) // parsing reject email schema.
+	if ReadError != nil {ErrorLogger.Println("Failed to Parse Reject Order Email File Path.")}
+	BackgroundImage := EmailBackgroundImage{
+		file: FileByteData,
+	}
+	sended, error := this.SendEmailNotification(BackgroundImage)
 	if sended != true || error != nil {
 		return false, errors.New(
 			"Failed To Send Reject Email Notification.")
@@ -286,9 +299,14 @@ func (this *EmailSender) SendRejectEmail(BackgroundImage ...EmailBackgroundImage
 }
 
 // Method Is used for sending Email Notification to the customer Email, that the order has been Accepted.
-func (this *EmailSender) SendAcceptEmail(BackgroundImage ...EmailBackgroundImage) (bool, error) {
+func (this *EmailSender) SendAcceptEmail() (bool, error) {
 
-	sended, error := this.SendEmailNotification()
+	fileByteData, ReadError := ioutil.ReadFile(os.Getenv("ACCEPT_ORDER_EMAIL_BACKGROUND_IMAGE_PATH")) // parsing accept email schema
+	if ReadError != nil {ErrorLogger.Println("Failed to Parse Accept Email File Path.")}
+	backgroundImage := EmailBackgroundImage{
+		file: fileByteData,
+	}
+	sended, error := this.SendEmailNotification(backgroundImage)
 	if sended != true || error != nil {
 		return false, errors.New(
 			"Failed To Send Accept Email Notification.")

@@ -37,12 +37,13 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: mongo_password 
     volumes:
       - ./mongo/docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/
-      - ./mongo/db/data:/data/db
+      - mongo_data:/data/db
     ports:
       - 27017:27017
       - 29017:29017
     networks:
       - go_store_network 
+
     command:
       - mongod --port 27017
     healthcheck:
@@ -81,4 +82,7 @@ networks:
     external: true 
     name: go_store_network 
     
-
+volumes:
+  mongo_data: 
+    external: true 
+  
