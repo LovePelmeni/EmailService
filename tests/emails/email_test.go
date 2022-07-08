@@ -28,17 +28,16 @@ func (this *EmailSenderSuite) SetupTest() {
 		this.Controller)
 }
 
+func (this *EmailSenderSuite) TearDownTest() {
+	this.Controller.Finish()
+}
+
 func TestRunEmailSenderSuite(t *testing.T) {
 	suite.Run(t, new(EmailSenderSuite))
 }
 
-func (this *EmailSenderSuite) TearDownTest(t *testing.T) {
-	this.Controller.Finish()
-}
+func (this *EmailSenderSuite) TestEmailSend() {
 
-func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
-
-	defer this.Controller.Finish()
 	EmailMessage := "Test EmailMessage"
 	EmailReceiver := "testemail@gmail.com"
 
@@ -48,13 +47,12 @@ func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
 	}
 
 	mockedResponse := this.MockedEmailSenderController.EXPECT().SendEmail().Times(1).Return(true, nil)
+	response, error := EmailSender.SendEmailNotification(emails.EmailBackgroundImage{})
 
-	response, error := EmailSender.SendEmailNotification()
-
-	assert.Equal(t, mockedResponse.String, response)
-	if notError := assert.Equal(t, error, error) &&
-		assert.Equal(t, error, nil); notError != true {
-		assert.Errorf(t, error,
+	assert.Equal(this.T(), mockedResponse.String, response)
+	if notError := assert.Equal(this.T(), error, error) &&
+		assert.Equal(this.T(), error, nil); notError != true {
+		assert.Errorf(this.T(), error,
 			"Error Should Equals to None, got %s", error)
 	}
 
@@ -62,18 +60,15 @@ func (this *EmailSenderSuite) TestEmailSend(t *testing.T) {
 	mockedOrderResponse := this.MockedEmailSenderController.EXPECT().SendOrderEmail().Times(1).Return(true, nil)
 
 	AcceptResponse, error := EmailSender.SendAcceptEmail()
-	assert.Equal(t, mockedOrderResponse, AcceptResponse)
-	assert.Equal(t, error, nil)
+	assert.Equal(this.T(), mockedOrderResponse, AcceptResponse)
+	assert.Equal(this.T(), error, nil)
 
 	// Mocked Order Reject Assertions.
 
 	mockedOrderResponse2 := this.MockedEmailSenderController.EXPECT().SendOrderEmail().Times(1).Return(true, nil)
 	RejectResponse, error := EmailSender.SendRejectEmail()
-	assert.Equal(t, RejectResponse, mockedOrderResponse2)
-	assert.Equal(t, error, nil)
+	assert.Equal(this.T(), RejectResponse, mockedOrderResponse2)
+	assert.Equal(this.T(), error, nil)
+
+	defer this.Controller.Finish()
 }
-
-
-
-
-

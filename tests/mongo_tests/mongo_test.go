@@ -55,15 +55,15 @@ func (this *MongoConsumerSuite) SetupTest() {
 	}
 }
 
-func (this *MongoConsumerSuite) TestRunSuite(t *testing.T) {
+func TestRunSuite(t *testing.T) {
 	suite.Run(t, new(MongoConsumerSuite))
 }
 
-func (this *MongoConsumerSuite) TearDownTest(t *testing.T) {
+func (this *MongoConsumerSuite) TearDownTest() {
 	this.Controller.Finish()
 }
 
-func (this *MongoConsumerSuite) TestSaveDocument(t *testing.T) {
+func (this *MongoConsumerSuite) TestSaveDocument() {
 	TestDocument := mongo_controllers.EmailDocument{
 		Uuid:          primitive.NewObjectID(),
 		EmailReceiver: "some_email@gmail.com",
@@ -74,11 +74,11 @@ func (this *MongoConsumerSuite) TestSaveDocument(t *testing.T) {
 	InterfaceResponse := this.MockedMongoDBConsumer.EXPECT().SaveDocument(&TestDocument).Return(true, nil).Times(1)
 
 	StructResponse, error := this.MongoConnection.SaveDocument(&TestDocument)
-	assert.Equal(t, InterfaceResponse, StructResponse)
-	assert.Equal(t, error, nil)
+	assert.Equal(this.T(), InterfaceResponse, StructResponse, "Failed To Compare Responses.")
+	assert.Equal(this.T(), error, nil, "Error Should equal to None")
 }
 
-func (this *MongoConsumerSuite) TestUpdateDocument(t *testing.T) {
+func (this *MongoConsumerSuite) TestUpdateDocument() {
 
 	TestDocument := mongo_controllers.EmailDocument{
 		Uuid:          primitive.NewObjectID(),
@@ -89,7 +89,7 @@ func (this *MongoConsumerSuite) TestUpdateDocument(t *testing.T) {
 
 	saved, error := this.MongoConnection.SaveDocument(&TestDocument)
 	if saved && error != nil {
-		assert.Errorf(t, error, "Mongo Test Database Is Not Running...")
+		assert.Errorf(this.T(), error, "Mongo Test Database Is Not Running...")
 	}
 	UpdatedDocumentData := map[string]string{}
 
@@ -99,11 +99,11 @@ func (this *MongoConsumerSuite) TestUpdateDocument(t *testing.T) {
 	StructResponse, error := this.MongoConnection.UpdateDocument(
 		TestDocument.Uuid.String(), UpdatedDocumentData)
 
-	assert.Equal(t, StructResponse, InterfaceResponse)
-	assert.Equal(t, error, nil)
+	assert.Equal(this.T(), StructResponse, InterfaceResponse)
+	assert.Equal(this.T(), error, nil)
 }
 
-func (this *MongoConsumerSuite) TestDeleteDocument(t *testing.T) {
+func (this *MongoConsumerSuite) TestDeleteDocument() {
 
 	TestDocument := mongo_controllers.EmailDocument{
 		Uuid:          primitive.NewObjectID(),
@@ -115,7 +115,7 @@ func (this *MongoConsumerSuite) TestDeleteDocument(t *testing.T) {
 	saved, error := this.MongoConnection.SaveDocument(&TestDocument)
 	if error != nil && saved != true {
 		assert.Errorf(
-			t, error, "FAILED TO SAVE DOCUMENT TO THE TEST DB. CHECK IF ITS RUNNING.")
+			this.T(), error, "FAILED TO SAVE DOCUMENT TO THE TEST DB. CHECK IF ITS RUNNING.")
 	}
 
 	this.MockedMongoDBConsumer.EXPECT().DeleteDocument(TestDocument.Uuid.String()).Return(true).Times(1)

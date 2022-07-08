@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: email-service-nginx-server 
+  labels:
+    app: email-service-nginx-server 
+spec:
+  replicas: 3 
+  selector:
+    matchLabels:
+      app: email-service-nginx-server 
+  template:
+    metadata:
+      labels:
+        app: email-service-nginx-server 
+    spec:
+      containers:
+        - name: email-service-nginx-server 
+          image: nginx:latest 
+            volumeMounts:
+              - mountPath: /etc/nginx/nginx.conf 
+              - name: NginxConfiguration 
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "0.4"
+              memory: "1Gi"
+            requests:
+              cpu: "0.4"
+              memory: "1Gi"
+
+          hostNetwork: true 
+          dnsPolicy: Default
+          restartPolicy: onFailure 
+          
+        volumes:
+          - name: NginxConfiguration 
+            hostPath:
+              path: ./nginx/nginx.conf 
+
+
