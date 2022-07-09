@@ -2,12 +2,9 @@ apiVersion: apps/v1
 kind: Deployment 
 metadata:
   name: mongo-database-server
-  labels:
-    app: mongo-database-server 
+  namespace: email_namespace 
   
 spec:
-
-  replicas: 3 
   selector:
     matchLabels:
       app: mongo-database-server 
@@ -18,6 +15,7 @@ spec:
         app: mongo-database-server 
 
     spec:
+      replicas: 3 
       restartPolicy: onFailure 
       dnsPolicy: Default 
       hostNetwork: true
@@ -32,8 +30,9 @@ spec:
               name: MongoConfiguration
               readOnly: true 
 
-            - mountPath: /data/db
+            - mountPath: /data/db 
               name: MongoDataVolume 
+
 
           env:
             - name: MONGO_INITDB_DATABASE 
@@ -74,9 +73,3 @@ spec:
         - name: MongoDataVolume 
             hostPath:
               path: EmailService/mongo/data/db
-
-
-
-
-
-

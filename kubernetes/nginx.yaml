@@ -1,9 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment 
+
 metadata:
   name: email-service-nginx-server 
-  labels:
-    app: email-service-nginx-server 
+  namespace: email_namespace 
+  
 spec:
   replicas: 3 
   selector:

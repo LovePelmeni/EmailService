@@ -1,24 +1,27 @@
 package emails
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 
 	"log"
 	"net"
 	"os"
-
 	"sync"
-	"context"
-	"net/http"
-	"strings"
 
+	"context"
+	_ "net/http"
+	_ "strings"
+
+	"io/ioutil"
 	"strconv"
 	"time"
-	"io/ioutil"
 
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
 	"github.com/LovePelmeni/OnlineStore/EmailService/mongo_controllers"
+	"github.com/spacemonkeygo/openssl"
+	"github.com/toorop/go-dkim"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -27,11 +30,21 @@ import (
 )
 
 var (
-	DebugLogger *log.Logger
-	ErrorLogger *log.Logger
-	WarnLogger  *log.Logger
-	InfoLogger  *log.Logger
+	DebugLogger    *log.Logger
+	ErrorLogger    *log.Logger
+	WarnLogger     *log.Logger
+	InfoLogger     *log.Logger
+	SmtpPrivateKey []byte
 )
+
+func GeneratePrivateEmailKey() ([]byte, error) {
+	privateKey, error := openssl.GenerateRSAKey(3)
+	if error != nil ||
+		privateKey.(openssl.PrivateKey) == nil {
+		ErrorLogger.Println("Failed to generate Openssl RSA KEY")
+	}
+	return privateKey.MarshalPKCS1PrivateKeyPEM()
+}
 
 func init() {
 	LogFile, error := os.OpenFile("emails.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -42,6 +55,11 @@ func init() {
 	InfoLogger = log.New(LogFile, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ErrorLogger = log.New(LogFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	WarnLogger = log.New(LogFile, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	RawToken, error := GeneratePrivateEmailKey()
+	if error != nil {ErrorLogger.Println("Failed to Create Proper Certificate Using Openssl")}
+	SmtpPrivateKey = []byte(RawToken)
+
 }
 
 // Default Themes for Accepted and Rejected Images.
@@ -99,7 +117,7 @@ func (this *grpcEmailServer) SendEmail(context context.Context,
 	if error != nil {
 		sended = false
 	}
-	DebugLogger.Println(fmt.Sprintf("Email has been sended to ..."))
+	// DebugLogger.Println(fmt.Sprintf("Email has been sended to ..."))
 	return &grpcControllers.EmailResponse{Delivered: sended}, nil
 }
 
@@ -136,15 +154,15 @@ func (this *grpcEmailServer) SendOrderEmail(context context.Context,
 // Emails API
 
 type EmailBackgroundImage struct {
-	file []byte 
+	file []byte
 }
 
-func (this *EmailBackgroundImage) ToMailFile() (mail.File){
+func (this *EmailBackgroundImage) ToMailFile() mail.File {
 	mailFile := mail.File{
-		Data: this.file, 
+		Data: this.file,
 		Name: "File",
 	}
-	return mailFile 
+	return mailFile
 }
 
 //go:generate mockgen -destination=mocks/emails.go --build_flags=--mod=mod . EmailSenderInterface
@@ -178,69 +196,98 @@ var (
 func createSMTPClient() (*mail.SMTPClient, error) {
 	// creates SMTP Client for managing emails.
 	port, error := strconv.Atoi(os.Getenv("SMTP_SERVER_PORT"))
-	if error != nil {
-		return nil, error
-	}
+	_ = error
 
 	client := mail.NewSMTPClient()
-	client.Encryption = mail.EncryptionSTARTTLS
+
 	client.Username = os.Getenv("SMTP_SERVER_EMAIL")
 	client.Password = os.Getenv("SMTP_SERVER_PASSWORD")
 	client.Port = port
 	client.Host = os.Getenv("SMTP_SERVER_HOST")
-	client.ConnectTimeout = 10 * time.Second
-	client.SendTimeout = 10 * time.Second
-	smtpClient, error := client.Connect()
 
-	if error != nil {
-		panic(error)
+	client.ConnectTimeout = 15 * time.Second
+	client.SendTimeout = 15 * time.Second
+	client.KeepAlive = false
+
+	client.Encryption = mail.EncryptionSTARTTLS
+	client.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	smtpClient, ConnectionError := client.Connect()
+
+	if ConnectionError != nil {
+		panic(ConnectionError)
 	}
 	return smtpClient, nil
 }
 
-
 // Sends Email Notification using mail golang SDK
 func (this *EmailSender) SendEmailNotification(
-BackgroundImage ...EmailBackgroundImage) (bool, error) {
+	BackgroundImage ...EmailBackgroundImage) (bool, error) {
 
-	
 	client, error := createSMTPClient()
 
 	if error != nil {
 		panic(error)
 	}
 
-	if notNone := len(BackgroundImage); notNone != 0 {
-		FileExtension := strings.Split(http.DetectContentType(BackgroundImage[0].file), "/")[1]
-		ValidatedImage := mail.File{
-			Data: BackgroundImage[0].file,
-			Name: fmt.Sprintf("%s.%s", time.Now().String(), FileExtension),
-		}
-		_ = ValidatedImage 
-		
-	} else {
-		DebugLogger.Println("Invalid Background Image. Skipping...")
-	}
+	// if notNone := len(BackgroundImage); notNone != 0 {
+	// 	FileExtension := strings.Split(http.DetectContentType(BackgroundImage[0].file), "/")[1]
+	// 	ValidatedImage := mail.File{
+	// 		Data: BackgroundImage[0].file,
+	// 		Name: fmt.Sprintf("%s.%s", time.Now().String(), FileExtension),
+	// 	}
+	// 	_ = ValidatedImage
 
-	DebugLogger.Println(fmt.Sprintf("Sended Notification to customer: %s",
-    this.CustomerEmail))
+	// } else {
+	// 	DebugLogger.Println("Invalid Background Image. Skipping...")
+	// }
 
 	EmailMessage := mail.NewMSG()
 	EmailMessage.AddTo(this.CustomerEmail).SetSubject(this.Message)
 	EmailMessage.SetBody(mail.TextHTML, EmailHTMLBody)
 	// EmailMessage.Attach(&ValidatedImage)
-	sended_error := EmailMessage.Send(client)
-	if sended_error != nil {
-		panic(sended_error)
+
+	// Setting up Authentication Context for the Email Message.
+	if len(SmtpPrivateKey) != 0 {
+
+		EmailOptions := dkim.NewSigOptions()
+		EmailOptions.PrivateKey = []byte(SmtpPrivateKey)
+		EmailOptions.Domain = "gmail.com"
+		EmailOptions.Selector = "default"
+		EmailOptions.Headers = []string{"from", "date", "mime-version", "received", "received"}
+		EmailOptions.SignatureExpireIn = 3600
+		EmailOptions.AddSignatureTimestamp = true
+		EmailOptions.Canonicalization = "relaxed/relaxed"
+
+		EmailMessage.SetDkim(EmailOptions)
 	}
+	SendedError := EmailMessage.Send(client)
 
-	switch sended_error.(Error) {
+	DebugLogger.Println(fmt.Sprintf("Sended Notification to customer: %s",
+		this.CustomerEmail))
+
+	switch SendedError {
+
+	case openssl.ValidationError: // case if certificate is invalid or expired.
+
+		// Attempting to retry the operation...
+
+		group := sync.WaitGroup{}
+		newCertificate, error := GeneratePrivateEmailKey()
+		SmtpPrivateKey = []byte(newCertificate)
+
+		if error != nil {
+			ErrorLogger.Println("Failed To Retry Email. Certificate Failed to be generated.")
+		}
+		go func() { group.Add(1); this.SendEmailNotification(); group.Done() }()
+		return true, nil
+
 	case nil:
-
+		// In Case Email has been sended, it should be saved into mongo database..
 		Group := sync.WaitGroup{}
-		go func(group sync.WaitGroup, customerEmail string, Message string) {
+		go func(group *sync.WaitGroup, customerEmail string, Message string) {
 			// Saving Email to Mongo database Asynchronously...
 
+			group.Add(1)
 			mongoDatabase := mongo_controllers.MongoDatabase{
 
 				User:     os.Getenv("MONGO_DATABASE_USER"),
@@ -257,20 +304,19 @@ BackgroundImage ...EmailBackgroundImage) (bool, error) {
 
 			response, error := mongoDatabase.SaveDocument(&Document)
 
-
 			if response && error == nil {
 				DebugLogger.Println(fmt.Sprintf("Document has been saved"))
 			} else {
 				DebugLogger.Println(fmt.Sprintf("Failed TO Save Email Document, Exception %s", error))
 			}
 
-			Group.Done()
-		}(Group, this.CustomerEmail, this.Message)
+			group.Done()
+		}(&Group, this.CustomerEmail, this.Message)
 
 		Group.Wait()
 		return true, nil
 
-	default:
+	default: // Default if upper cases has not been satisfied
 		return false, errors.New("Failed To Send Notification.")
 	}
 }
@@ -285,7 +331,9 @@ func (this *EmailSender) sendDefaultEmail(backgroundImage ...EmailBackgroundImag
 func (this *EmailSender) SendRejectEmail() (bool, error) {
 
 	FileByteData, ReadError := ioutil.ReadFile(os.Getenv("REJECT_ORDER_EMAIL_BACKGROUND_IMAGE_PATH")) // parsing reject email schema.
-	if ReadError != nil {ErrorLogger.Println("Failed to Parse Reject Order Email File Path.")}
+	if ReadError != nil {
+		ErrorLogger.Println("Failed to Parse Reject Order Email File Path.")
+	}
 	BackgroundImage := EmailBackgroundImage{
 		file: FileByteData,
 	}
@@ -302,7 +350,9 @@ func (this *EmailSender) SendRejectEmail() (bool, error) {
 func (this *EmailSender) SendAcceptEmail() (bool, error) {
 
 	fileByteData, ReadError := ioutil.ReadFile(os.Getenv("ACCEPT_ORDER_EMAIL_BACKGROUND_IMAGE_PATH")) // parsing accept email schema
-	if ReadError != nil {ErrorLogger.Println("Failed to Parse Accept Email File Path.")}
+	if ReadError != nil {
+		ErrorLogger.Println("Failed to Parse Accept Email File Path.")
+	}
 	backgroundImage := EmailBackgroundImage{
 		file: fileByteData,
 	}

@@ -1,6 +1,9 @@
-package main
+// https://LovePelmeni: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@github.com/LovePelmeni/OnlineStore.git
+
+package client
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -89,8 +92,79 @@ func main() {
 	router.SetTrustedProxies([]string{
 		fmt.Sprintf("%s:%s", NGINX_PROXY_HOST, NGINX_PROXY_PORT)})
 
+	// HTTP EndPoints Goes There.
+
+	// GRPCLient via HTTP Endpoints...
+
+	router.POST("send/default/email/", func(context *gin.Context) {
+		customerEmail := context.Query("customerEmail")
+		client, error := CreateClient()
+		message := context.Query("Message")
+		if error != nil {
+			panic("Failed To Create Client" + error.Error())
+		}
+		grpcRequestParams := grpcControllers.DefaultEmailParams{
+			CustomerEmail: customerEmail,
+			EmailMessage:  message,
+		}
+
+		response, ResponseError := client.SendEmail(context, &grpcRequestParams)
+		if ResponseError != nil {
+			panic(ResponseError)
+		}
+		context.JSON(http.StatusOK, gin.H{"Delivered": response.Delivered})
+	})
+
+	router.POST("send/order/accept/email/", func(context *gin.Context) {
+
+		customerEmail := context.Query("customerEmail")
+		client, error := CreateClient()
+		if error != nil {
+			panic("Failed To Create Client.")
+		}
+		message := context.Query("Message")
+
+		orderEmailParams := grpcControllers.OrderEmailParams{
+
+			Status:        grpcControllers.OrderStatus_ACCEPTED,
+			CustomerEmail: customerEmail,
+			Message:       message,
+		}
+		response, error := client.SendOrderEmail(
+			context, &orderEmailParams)
+
+		context.JSON(http.StatusOK,
+			gin.H{"Delivered": response.Delivered})
+	})
+
+	router.POST("send/order/reject/email/:customerEmail", func(context *gin.Context) {
+
+		customerEmail := context.Query("customerEmail")
+		client, error := CreateClient()
+		if error != nil {
+			panic("Failed To Create Client.")
+		}
+		message := context.Query("Message")
+		orderEmailParams := grpcControllers.OrderEmailParams{
+
+			Status:        grpcControllers.OrderStatus_REJECTED,
+			CustomerEmail: customerEmail,
+			Message:       message,
+		}
+		response, error := client.SendOrderEmail(
+			context, &orderEmailParams)
+		context.JSON(http.StatusOK,
+			gin.H{"Delivered": response.Delivered})
+	})
+
 	router.GET("/healthcheck/", func(context *gin.Context) {
 		context.JSON(http.StatusOK, nil)
 	})
-	router.Run(fmt.Sprintf(":%s", port))
+	error := router.Run(fmt.Sprintf(":%s", port))
+
+	// Running gRPC Server.
+
+	if errors.Is(error, http.ErrServerClosed) {
+		ErrorLogger.Println("Failed to Start Server.")
+	}
 }

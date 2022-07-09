@@ -1,9 +1,9 @@
 apiVersion: apps/v1 
 kind: Deployment 
+
 metadata:
   name: email-application-service 
-  labels:
-    app: email-application-service  
+  namespace: email_namespace 
 
   spec:
     replicas: 3 
@@ -23,7 +23,7 @@ metadata:
           envFrom:
             - secretRef:
               name: ProjectSecrets
-          restartPolicy: onFailure 
+        restartPolicy: onFailure 
         
           livenessProbe:
             - httpGet:
@@ -39,8 +39,6 @@ metadata:
               cpu: "0.6"
               memory: "3Gi"
           
-          hostNetwork: true 
-          dnsPolicy: Default 
-
-
+        hostNetwork: true 
+        dnsPolicy: Default 
 

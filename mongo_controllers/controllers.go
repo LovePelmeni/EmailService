@@ -85,25 +85,23 @@ func InitializeMongoDatabase() {
 
 func (this *MongoDatabase) Connect() (*mongo.Client, error) {
 
-	RequestContext, error := context.WithTimeout(
-		context.Background(), 10*time.Second)
-	if error != nil {
-		panic("Timeout Context for Mongo Connection, Creation Failed..")
-	}
 	mongoURL := fmt.Sprintf("mongodb://%s:%s/%s:%s/%s", this.User, this.Password,
 		this.Host, this.Port, this.DbName)
 
-	defer error()
+	RequestContext, CancelFunc := context.WithTimeout(
+		context.Background(), 10*time.Second)
+
+	_ = CancelFunc
+
 	Client, error_ := mongo.Connect(RequestContext, options.Client().ApplyURI(mongoURL))
 	if errors.Is(error_, mongo.ErrClientDisconnected) || errors.Is(error_, mongo.ErrWrongClient) {
 		return nil, errors.New("Failed To Connect, Server Error")
 	}
-
-	defer func() {
-		if error := Client.Disconnect(RequestContext); error != nil {
-			panic("Failed To Disconnect.")
-		}
-	}() // defering disconnection..
+	// defer func() {
+	// 	if error := Client.Disconnect(RequestContext); error != nil {
+	// 		panic("Failed To Disconnect.")
+	// 	}
+	// }() // defering disconnection..
 	return Client, nil
 }
 
@@ -126,19 +124,19 @@ func (this *MongoDatabase) SaveDocument(document *EmailDocument) (bool, error) {
 		errors.Is(Exception, mongo.ErrWrongClient) {
 		panic("Invalid Client Credentials.")
 	}
-	if Exception != nil {
+	if Exception != nil && Session == nil {
 		return false, exceptions.ConnectionFailed()
 	}
 
 	Collection := Session.Database(this.DbName).Collection(
 		fmt.Sprintf("%s", EmailCollectionName))
 
-	document.mutex.Lock()
-	inserted, error := Collection.InsertOne(context.Background(), document)
+	timeOutContext, Cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer Cancel()
+
+	inserted, error := Collection.InsertOne(timeOutContext, document)
 	DebugLogger.Println("Inserted.")
 	_ = inserted
-
-	document.mutex.Unlock()
 
 	if errors.Is(error, mongo.ErrNilValue) ||
 		errors.Is(error, mongo.ErrNilDocument) {
