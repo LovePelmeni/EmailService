@@ -1,5 +1,5 @@
 apiVersion: apps/v1 
-kind: Deployment 
+kind: StatefulSet
 metadata:
   name: mongo-database-server
   namespace: email_namespace 
@@ -12,7 +12,7 @@ spec:
   template:
     metadata: 
       labels:
-        app: mongo-database-server 
+        app: mongo-service 
 
     spec:
       replicas: 3 
@@ -71,5 +71,5 @@ spec:
               path: EmailService/mongo/docker-entrypoint-init.d/
 
         - name: MongoDataVolume 
-            hostPath:
-              path: EmailService/mongo/data/db
+          persistentVolumeClaim:
+            claimName: MongoPersistentVolumeClaim
