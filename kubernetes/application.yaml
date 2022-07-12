@@ -1,34 +1,33 @@
 apiVersion: apps/v1 
 kind: Deployment 
-
 metadata:
   name: email-application-service 
   namespace: email-namespace 
 
-  spec:
+spec:
     selector:
       matchLabels:
-        app: email-application-service 
+        app: internal-service 
     template:
       metadata: 
         labels:
-          app: email-application-service 
+          app: internal-service
       spec:
         containers:
         - name: email-service-application 
-          image: crazycoderrr/emails_service # this image should be installed
+          image: crazycoderrr/email_service # this image should be installed
           ports:
           - containerPort: 8000 
           envFrom:
             - secretRef:
-              name: project-secrets
-        restartPolicy: onFailure 
+                name: project-secrets
+
+          imagePullPolicy: Never
         
           livenessProbe:
-            - httpGet:
-                path: /healthcheck/
-                port: 8000 
-                protocol: HTTP  
+            httpGet:
+              path: /healthcheck/
+              port: 8000 
 
           resources:
             requests:

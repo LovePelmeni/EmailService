@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service 
 metadata:
   name: email-internal-service 
-  namespace: ingress-nginx 
+  namespace: email-namespace 
 spec:
   type: ClusterIP 
   externalIPs:
@@ -11,8 +11,8 @@ spec:
     app: internal-service
   ports:
    - name: http 
-     port: 80 # external port of the nginx deployment...
-     targetPort: 80 
+     port: 8000 # external port of the nginx deployment...
+     targetPort: 8000 
      protocol: TCP 
 
 
