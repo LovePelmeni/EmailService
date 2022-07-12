@@ -1,8 +1,8 @@
 version: "3.9"
 services:
 
-  nginx_server: 
-    container_name: nginx_server 
+  email_nginx_server: 
+    container_name: email_nginx_server 
     image: nginx:latest 
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf 
@@ -10,6 +10,8 @@ services:
       - 8001:80 
     depends_on:
       - email_service_application 
+    networks:
+      - go_store_network 
 
   email_service_application:
     container_name: application
@@ -28,24 +30,23 @@ services:
       timeout: 10s 
       interval: 10s 
 
-  mongo_database: 
-    container_name: mongo_database 
+  mongo_database:
+    container_name: mongodb_server 
     image: mongo:latest 
     environment:
       MONGO_INITDB_DATABASE: emails_db 
       MONGO_INITDB_ROOT_USERNAME: mongo_user 
       MONGO_INITDB_ROOT_PASSWORD: mongo_password 
     volumes:
-      - ./mongo/docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/
-      - mongo_data:/data/db
-    ports:
+      - ./mongo/docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/ 
+      - ./mongo/db/data:/data/db
+    command: mongod --port 27017
+    ports: 
       - 27017:27017
-      - 29017:29017
+      - 29018:27018
     networks:
       - go_store_network 
 
-    command:
-      - mongod --port 27017
     healthcheck:
       test: echo `db.runCommand("ping"),ok` | mongo mongo_database:27017/emails_db --quiet
       retries: 5 
@@ -53,29 +54,27 @@ services:
       interval: 10s
       start_period: 30s 
       
-  test_mongo_database:
-    container_name: test_mongo_database 
-    image: mongo:latest 
-    environment:
-      MONGO_INITDB_DATABASE: emails_test_db 
-      MONGO_INITDB_ROOT_USERNAME: mongo_user 
-      MONGO_INITDB_ROOT_PASSWORD: mongo_password 
-    ports:
-      - 27018:27018
-      - 29018:29018
-    volumes:
-      - ./mongo/test-docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/
-      - ./mongo/db/data:/data/db
-    command:
-      - mongod --port 27018
-    networks:
-      - go_store_network 
-    healthcheck:
-      test: echo `db.runCommand("ping"),ok` | mongo mongo_database:27018/emails_db --quiet
-      retries: 5 
-      timeout: 10s 
-      interval: 10s 
-      start_period: 30s 
+  # test_mongo_database:
+  #   container_name: test_mongo_database 
+  #   image: mongo:latest 
+  #   environment:
+  #     MONGO_INITDB_DATABASE: emails_test_db 
+  #     MONGO_INITDB_ROOT_USERNAME: mongo_user 
+  #     MONGO_INITDB_ROOT_PASSWORD: mongo_password 
+  #   ports:
+  #     - 27018:27018
+  #   volumes:
+  #     - ./mongo/test-docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/
+  #     - ./mongo/db/data:/data/db
+  #   command: mongod --port 27018
+  #   networks:
+  #     - go_store_network 
+  #   healthcheck:
+  #     test: echo `db.runCommand("ping"),ok` | mongo mongo_database:27018/emails_db --quiet
+  #     retries: 5 
+  #     timeout: 10s 
+  #     interval: 10s 
+  #     start_period: 30s 
       
 networks:
   go_store_network:

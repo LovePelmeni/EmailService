@@ -5,10 +5,13 @@ metadata:
   namespace: ingress-nginx 
 spec:
   type: NodePort
-  http: 
-    paths:
-      path: "/"
-      backend:
-        service:  
-          name: EmailInternalService 
-          port: 8009 
+  rules:
+    - http: 
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:  
+                name: EmailInternalService 
+                port: 
+                  number: 8010

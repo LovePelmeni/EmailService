@@ -3,7 +3,7 @@ kind: Deployment
 
 metadata:
   name: email-application-service 
-  namespace: email_namespace 
+  namespace: email-namespace 
 
   spec:
     selector:
@@ -18,12 +18,10 @@ metadata:
         - name: email-service-application 
           image: crazycoderrr/emails_service # this image should be installed
           ports:
-          - targetPort: 8000 
-            port: 8000 
-            protocol: HTTP 
+          - containerPort: 8000 
           envFrom:
             - secretRef:
-              name: ProjectSecrets
+              name: project-secrets
         restartPolicy: onFailure 
         
           livenessProbe:

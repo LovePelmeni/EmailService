@@ -1,7 +1,10 @@
 package emails
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 
@@ -20,7 +23,6 @@ import (
 
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
 	"github.com/LovePelmeni/OnlineStore/EmailService/mongo_controllers"
-	"github.com/spacemonkeygo/openssl"
 	"github.com/toorop/go-dkim"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
@@ -38,12 +40,12 @@ var (
 )
 
 func GeneratePrivateEmailKey() ([]byte, error) {
-	privateKey, error := openssl.GenerateRSAKey(3)
-	if error != nil ||
-		privateKey.(openssl.PrivateKey) == nil {
+	privateKey, error := rsa.GenerateKey(rand.Reader, 2048)
+	if error != nil {
 		ErrorLogger.Println("Failed to generate Openssl RSA KEY")
 	}
-	return privateKey.MarshalPKCS1PrivateKeyPEM()
+	var PrivateKeyBytes []byte = x509.MarshalPKCS1PrivateKey(privateKey)
+	return PrivateKeyBytes, nil
 }
 
 func init() {
@@ -56,8 +58,10 @@ func init() {
 	ErrorLogger = log.New(LogFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	WarnLogger = log.New(LogFile, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 
-	RawToken, error := GeneratePrivateEmailKey()
-	if error != nil {ErrorLogger.Println("Failed to Create Proper Certificate Using Openssl")}
+	var RawToken string
+	if error != nil {
+		ErrorLogger.Println("Failed to Create Proper Certificate Using Openssl")
+	}
 	SmtpPrivateKey = []byte(RawToken)
 
 }
@@ -267,13 +271,13 @@ func (this *EmailSender) SendEmailNotification(
 
 	switch SendedError {
 
-	case openssl.ValidationError: // case if certificate is invalid or expired.
+	case rsa.ErrVerification: // case if certificate is invalid or expired.
 
 		// Attempting to retry the operation...
 
 		group := sync.WaitGroup{}
-		newCertificate, error := GeneratePrivateEmailKey()
-		SmtpPrivateKey = []byte(newCertificate)
+		newCertificate, error := GeneratePrivateEmailKey() // return bytes...
+		SmtpPrivateKey = newCertificate
 
 		if error != nil {
 			ErrorLogger.Println("Failed To Retry Email. Certificate Failed to be generated.")
