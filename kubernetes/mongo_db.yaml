@@ -15,7 +15,6 @@ spec:
         app: mongo-service 
 
     spec:
-      replicas: 3 
       restartPolicy: onFailure 
       dnsPolicy: Default 
       hostNetwork: true
@@ -30,9 +29,8 @@ spec:
               name: MongoConfiguration
               readOnly: true 
 
-            - mountPath: /data/db 
-              name: MongoDataVolume 
-
+            # - mountPath: /data/db 
+            #   name: MongoDataVolume 
 
           env:
             - name: MONGO_INITDB_DATABASE 
@@ -64,12 +62,13 @@ spec:
               limits:
                  memory: "3Gi"
                  cpu: "0.6"
-              
         volumes:
          - name: MongoConfiguration
             hostPath:
               path: EmailService/mongo/docker-entrypoint-init.d/
 
-        - name: MongoDataVolume 
-          persistentVolumeClaim:
-            claimName: MongoPersistentVolumeClaim
+        # - name: MongoDataVolume 
+        #   persistentVolumeClaim:
+        #     claimName: MongoPersistentVolumeClaim
+
+

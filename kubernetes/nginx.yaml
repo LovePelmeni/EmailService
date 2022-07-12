@@ -6,7 +6,6 @@ metadata:
   namespace: email_namespace 
   
 spec:
-  replicas: 3 
   selector:
     matchLabels:
       app: email-service-nginx-server 
@@ -22,7 +21,9 @@ spec:
               - mountPath: /etc/nginx/nginx.conf 
               - name: NginxConfiguration 
           ports:
-            - containerPort: 80
+            - targetPort: 80 
+              port: 8010 
+              protocol: TCP 
           resources:
             limits:
               cpu: "0.4"
@@ -38,6 +39,6 @@ spec:
         volumes:
           - name: NginxConfiguration 
             hostPath:
-              path: ./nginx/nginx.conf 
+              path: EmailService/nginx/nginx.conf 
 
 

@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress 
+metadata:
+  name: ingress-network 
+  namespace: ingress-nginx 
+spec:
+  type: NodePort
+  http: 
+    paths:
+      path: "/"
+      backend:
+        service:  
+          name: EmailInternalService 
+          port: 8009 

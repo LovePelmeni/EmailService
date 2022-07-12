@@ -1,0 +1,19 @@
+apiVersion: v1 
+metadata:
+  name: MongoPersistentVolumeClaim 
+  namespace: email_namespace 
+spec:
+  accessModes: {{ ./PersistentVolumeParams.AccessModes }}
+  volumeMode: {{ ./PersistentVolumeParams.VolumeMode }}
+  storageClassName: manual 
+  resources:  
+    requests:
+      cpu: "0.5"
+      memory: "3Gi"
+    limits:
+      cpu: "0.5"
+      memory: "3Gi"
+
+
+
+

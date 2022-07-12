@@ -6,7 +6,6 @@ metadata:
   namespace: email_namespace 
 
   spec:
-    replicas: 3 
     selector:
       matchLabels:
         app: email-application-service 
@@ -19,7 +18,9 @@ metadata:
         - name: email-service-application 
           image: crazycoderrr/emails_service # this image should be installed
           ports:
-          - containerPort: 8000 
+          - targetPort: 8000 
+            port: 8000 
+            protocol: HTTP 
           envFrom:
             - secretRef:
               name: ProjectSecrets
@@ -27,9 +28,9 @@ metadata:
         
           livenessProbe:
             - httpGet:
-              path: /healthcheck/
-              port: 8000 
-              protocol: HTTP  
+                path: /healthcheck/
+                port: 8000 
+                protocol: HTTP  
 
           resources:
             requests:
