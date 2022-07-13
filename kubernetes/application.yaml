@@ -7,36 +7,23 @@ metadata:
 spec:
     selector:
       matchLabels:
-        app: internal-service 
+        run: internal-service 
     template:
       metadata: 
         labels:
-          app: internal-service
+          run: internal-service
       spec:
         containers:
         - name: email-service-application 
           image: crazycoderrr/email_service # this image should be installed
           ports:
           - containerPort: 8000 
+            hostPort: 8000 
+            protocol: TCP 
+          
           envFrom:
             - secretRef:
                 name: project-secrets
 
-          imagePullPolicy: Never
-        
-          livenessProbe:
-            httpGet:
-              path: /healthcheck/
-              port: 8000 
-
-          resources:
-            requests:
-              cpu: "0.5"
-              memory: "3Gi"
-            limits:
-              cpu: "0.6"
-              memory: "3Gi"
-          
-        hostNetwork: true 
-        dnsPolicy: Default 
+          imagePullPolicy: IfNotPresent
 

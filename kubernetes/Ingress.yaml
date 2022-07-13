@@ -14,4 +14,4 @@ spec:
               service:  
                 name: EmailInternalService 
                 port: 
-                  number: 8010
+                  number: 8000
