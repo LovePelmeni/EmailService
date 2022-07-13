@@ -1,0 +1,28 @@
+pipeline {
+
+    agent any 
+
+    stages {
+
+        stage("build"){
+
+            // gonna figure out about API versions soon .... 
+            docker build . 
+        }
+
+        stage("test"){
+            echo "Checking Health of the Application..."
+            echo "curl -f http://localhost:8000/healthcheck/" /bin/bash // 
+
+            // Running GRPC Integration Tests and Default Test Cases... 
+            go run default_test_cases.go 
+            go run grpc_test_cases.go
+        }
+
+        stage("deployment"){ 
+            // Pushing Image into docker regsitry in order to kubernetes will eventually pick it up after restart...
+            docker tag crazycoderrr/email_service 
+            docker push crazycoderrr/email_service
+        }
+    }
+}
