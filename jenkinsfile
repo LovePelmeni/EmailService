@@ -8,7 +8,7 @@ pipeline {
 
             steps {
             // gonna figure out about API versions soon .... 
-                  sh "echo 'Running Building Stage...'"
+                sh "echo 'Running Building Stage...'"
             }
         }
 
