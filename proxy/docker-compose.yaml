@@ -1,5 +1,4 @@
 version: "3.8"
-
 services:
    nginx_proxy_kubernetes_server:
       container_name: nginx-kubernetes-proxy

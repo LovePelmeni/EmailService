@@ -12,6 +12,22 @@ spec:
             pathType: Prefix
             backend:
               service:  
-                name: EmailInternalService 
+                name: email-internal-service 
                 port: 
                   number: 8000
+
+            path: "/jenkins-server/ui/"
+            pathType: Prefix 
+            backend: 
+              service:
+                name: jenkins-server-service 
+                port:
+                  number: 8080 
+
+            path: "/jenkins-server/management/"
+            pathType: Prefix 
+            backend: 
+              service:
+                name: jenkins-server-service 
+                port:
+                  number: 40000 

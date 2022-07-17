@@ -2,11 +2,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: email-internal-service 
-  namespace: email-namespace 
+  namespace: ingress-nginx 
 spec:
   type: ClusterIP
-  externalIPs:
-    - 192.168.0.10 
   selector:
     run: internal-service
   ports:

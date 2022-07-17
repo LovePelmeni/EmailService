@@ -1,38 +1,28 @@
 pipeline {
 
     agent any  
-    environment {
-        PROJECT_ID="1"
-        CLUSTER_NAME = "Some Cluster IP"
-        LOCATION = ''
-        CREDENTIALS_ID = ''
-        KUBERNETES_APPLICATION_MANIFEST_URL = "https://github.com/LovePelmeni/EmailService/kubernetes/application.yaml" // URL address to the Manifest of the applicaton...
-        NEW_API_VERSION = "" // need to specify new api version that is going to be released...
-        DOCKERFILE_GITHUB_URL = "https://github.com/LovePelmeni/EmailService/Dockerfile" // url to the Target Docker file
-    }
+    load "./gke_credentials.groovy"
 
     stages {
         
         stage("build") {    
             steps{
                 sh "echo 'Bulding Application...'"
-                docker build  --name=new_version_application
+                sh "docker build  --name=new_image EmailService/."
                 sh "echo 'Application Imgae has been build successfully... Passing to the Testing Stage...'"
             }
         }
         stage("test"){
             steps {
-                sh "Running Default Tests..."
-                sh "Running gRPC Integration Tests...."
-                sh "Tested...."
+                // running tests...
             }
         }
         stage("deploy"){
             steps {
                 sh "echo 'Tagging new Version of the API...'"
-                sh "docker tag new_version_application crazycoderrr/email_service@" + env.NEW_API_VERSION
+                sh "docker tag new_version_application crazycoderrr/email_service@${env.NEW_API_VERSION}" + env.NEW_API_VERSION
                 sh "echo 'Pulling to the registry...'"
-                sh "docker pull crazycoderrr/email_service@" + env.NEW_API_VERSION 
+                sh "docker pull crazycoderrr/email_service@${env.NEW_API_VERSION}" 
                 sh "Pulled... Sending Update Request to the Production Kubernetes Cluster...."
 
                  $class: 'KubernetesEngineBuilder',
@@ -43,6 +33,14 @@ pipeline {
                     credentialsId: env.CREDENTIALS_ID,
                     verifyDeployments: true])
             }
+        }
+        stage("gke-build-manifests"){
+            steps{
+
+            }
+        }
+        stage("gcp-kubernetes-deployment"){
+            
         }
     }
 }
