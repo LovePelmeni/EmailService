@@ -84,11 +84,15 @@ spec:
           VolumeMounts:
             - MountPath: /jenkins/home/ 
               name: jenkins-storage 
+            - MountPath: /var/run/docker.sock 
+              name: docker-socket-volume 
 
       Volumes:
         - name: jenkins-storage 
           PersistentClaim:
             claimName: jenkins-volume-claim 
+        - name: docker-socket-volume 
+          value: /var/run/docker.sock 
 
 
 

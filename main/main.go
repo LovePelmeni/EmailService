@@ -53,12 +53,6 @@ func CreateClient() (grpcControllers.EmailSenderClient, error) {
 	return client, nil
 }
 
-type RequestHTTPMessage struct {
-	message string
-}
-
-var reqMessage RequestHTTPMessage
-
 func main() {
 	// Creating Default HTTP Router for the application..
 
