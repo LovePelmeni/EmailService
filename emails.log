@@ -1,0 +1,18 @@
+DEBUG: 2022/07/07 17:41:27 emails.go:100: Email has been sended to ...
+DEBUG: 2022/07/07 17:42:13 emails.go:100: Email has been sended to ...
+DEBUG: 2022/07/07 17:44:38 emails.go:100: Email has been sended to ...
+DEBUG: 2022/07/07 17:45:46 emails.go:100: Email has been sended to ...
+DEBUG: 2022/07/07 17:45:55 emails.go:100: Email has been sended to ...
+DEBUG: 2022/07/08 15:57:51 emails.go:221: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 18:52:47 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 18:55:21 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 18:57:16 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 18:58:29 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 19:01:04 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 19:03:26 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 19:05:07 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 19:05:50 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 19:07:55 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 19:09:02 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 22:18:21 emails.go:282: Sended Notification to customer: customer@gmail.com
+DEBUG: 2022/07/08 22:19:12 emails.go:282: Sended Notification to customer: customer@gmail.com

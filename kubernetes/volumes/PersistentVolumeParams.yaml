@@ -1,7 +1,0 @@
-NodeName: Node1 
-DiskPath: /mnt/disks/ssd1 
-VolumeName: MongoPersistentVolume 
-StorageAmount: 5Gi 
-StorageClass: FileSystem
-VolumeMode: ReadWriteOnce 
-VolumeMode: FileSystem 

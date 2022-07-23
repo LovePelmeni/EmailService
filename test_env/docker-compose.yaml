@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+
+  email_application:
+    container_name: application
+    build: ../.
+    env_file: ./project_env.env 
+    ports:
+      - 8060:8060 
+    networks:
+      - global_store_network 
+    depends_on:
+      - mongo_database 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthcheck"]
+      retries: 5 
+      timeout: 10s 
+      interval: 10s 
+
+  mongo_database:
+    container_name: mongodb_server 
+    image: mongo:latest 
+    environment:
+      MONGO_INITDB_DATABASE: emails_db 
+      MONGO_INITDB_ROOT_USERNAME: mongo_user 
+      MONGO_INITDB_ROOT_PASSWORD: mongo_password 
+    volumes:
+      - ./mongo/docker-entrypoint-init.d/:/docker-entrypoint-initdb.d/ 
+      - ./mongo/db/data:/data/db
+    command: mongod --port 27017
+    ports: 
+      - 27017:27017
+      - 29018:27018
+    networks:
+      - go_store_network 
+
+    healthcheck:
+      test: echo `db.runCommand("ping"),ok` | mongo mongo_database:27017/emails_db --quiet
+      retries: 5 
+      timeout: 10s 
+      interval: 10s
+      start_period: 30s 
+      
+networks:
+  go_store_network:
+    external: true 
+    name: global_store_network 
+    
+  
+  

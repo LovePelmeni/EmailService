@@ -1,0 +1,1 @@
+DOCKERHUB_REPOSITORY_LINK="crazycoderrr/email_service"

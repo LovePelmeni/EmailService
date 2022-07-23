@@ -1,28 +1,108 @@
-pipeline {
+// Pipeline that Builds / Tests / Deploys the new Version of the Image.
+pipeline{
 
     agent any 
+    environment {
+        DOCKERHUB_CREDENTIALS=credentials("DockerHub") // Set Up Credentials at your Jenkins Server with Id :` DockerHub` and Your  Dockerhub Credentials
+        APPLICATION_HOST="test_email_application" // Name of the Service Image will be running on.... in Docker-Compose
+        APPLICATION_PORT="8060" // actual port of the nginx, where the requests will be routing to.
+    }
+
     stages {
+            stage("build"){
 
-        stage("build"){
-
-            steps {
-            // gonna figure out about API versions soon .... 
-                sh "echo 'Running Building Stage...'"
+                steps{
+                    script {
+                        def inspectDockerNetwork = sh script: "docker network create global_store_network", returnStatus: true  
+                        if (inspectDockerNetwork == 0) {
+                            sh "echo 'Creating Docker Network...'"
+                            sh "docker network create global_store_network"
+                            sh "echo 'Network Has been Created..'"
+                        }
+                    }
+                    dir("test_env"){
+                        sh "docker-compose up -d"
+                        sleep 10 
+                        sh "echo 'Docker Built Image Successfully! Running Container....'"
+                    }
+                }
             }
-        }
 
-        stage("test"){
-            steps {
-            sh "echo 'testing stage...'"
-            // Running GRPC Integration Tests and Default Test Cases... 
+            stage("test"){
+
+                steps{
+                    load "./test_env/version_env.groovy"
+
+                    sh "echo 'Running Test Pipeline'"
+                    sh "echo 'Running Healtcheck Test...'"
+                    sh "echo 'Sleeping until the Application will be fully ready...'"
+                    sleep 10    
+
+                    script {
+                        
+                        command = """curl -X GET -f 'http://${env.APPLICATION_HOST}:${env.APPLICATION_PORT}/healthcheck/'"""
+                        responseStatus = sh(script: command, returnStdout: true).trim()
+                                        
+                        if (responseStatus != "200") {
+                            sh "echo 'Application Responded with Failure, Not Ready for Production...'"
+                            error "Health Check Stage Failure."
+                            }
+                        }
+
+                    } 
+                post {
+                    always {
+                        dir("test_env"){
+                            sh "echo 'Removing Testing Environment'"
+                            sh "docker-compose down"
+                        }
+                    }
+                }  
             }
-        }
+            stage("deployment"){
 
-        stage("deployment"){ 
-            steps {
-            // Pushing Image into docker regsitry in order to kubernetes will eventually pick it up after restart...
-            sh "echo 'test pipeline deployment...'"
+                steps {
+                    load "./test_env/version_env.groovy"
+            
+                    sh "echo 'Running Deployment Pipeline Stage...'"
+                    sh "echo 'Tagging new Image Version'"
+
+                    withCredentials([usernamePassword(
+                        credentialsId: "DockerHub", // Credential Id that should be created at Jenkins Server...
+                        usernameVariable: env.DOCKERHUB_CREDENTIALS_USR, // Credential Username that should be created at jenkins Server.
+                        passwordVariable: env.DOCKERHUB_CREDENTIALS_PSW, // Credential Password that shoud be created at Jenkins Server..
+                    )]){
+                        sh "docker login -u ${env.DOCKERHUB_CREDENTIALS_USR} -p ${env.DOCKERHUB_CREDENTIALS_PSW}"
+                        sh "echo 'Logged In.. Into Docker.'"
+
+                        sh "echo 'Tagging An Image'"
+                        sh "docker tag test_email_application ${env.DOCKERHUB_REPOSITORY_LINK}:latest"
+                        sh "echo 'Tagged... Pushing onto docker repo.'"
+
+                        sh "docker push ${env.DOCKERHUB_REPOSITORY_LINK}:latest"
+
+                        sh "echo 'Tagged Successfully.. Pushing Image On Docker Hub..'"
+                        sh "echo 'Image has been Pushed Successfully! Pipeline Finished.'"
+                    }
+                }
+                
+                post {
+                    always { 
+                        sh "echo 'Removing Default Netwokr for Testing Environment.'"
+                        sh "docker network rm global_store_network"
+                        sh "echo 'Network Removed.'"
+                        sh "echo 'Removing Image from local environment..'"
+                        sh "docker image rm ${env.APPLICATION_HOST}"
+                        sh "echo 'Image has been removed..'"
+                        script {
+
+                        def loggingOut = sh script: "docker logout", returnStatus: true 
+                        if (loggingOut == 1){
+                            sh "echo 'Logged out from Dockerhub. Pipeline Succeeded!'"
+                            }   
+                        }
+                    }
+                }
             }
         }
     }
-}

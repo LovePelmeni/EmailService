@@ -54,6 +54,9 @@ stringData:
   MONGO_DATABASE: "emails_db"
   MONGO_DATABASE_USER: "mongo_emails_user"
   MONGO_DATABASE_PASSWORD: "mongo_emails_password"
+  MONGO_DATABASE_PORT: "27017"
+  MONGO_DATABASE_HOST: "mongo-database-server"
+
 
 --- 
 
