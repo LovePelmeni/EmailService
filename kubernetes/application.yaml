@@ -77,5 +77,3 @@ stringData:
 
   NGINX_PROXY_HOST: "nginx_server" 
   NGINX_PROXY_PORT: "80" 
-
-

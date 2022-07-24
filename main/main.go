@@ -9,9 +9,6 @@ import (
 	"github.com/LovePelmeni/OnlineStore/EmailService/emails"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	"github.com/LovePelmeni/OnlineStore/EmailService/emails/proto/grpcControllers"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -43,15 +40,6 @@ var (
 	grpcPort = os.Getenv("GRPC_SERVER_PORT")
 	grpcHost = os.Getenv("GRPC_SERVER_HOST")
 )
-
-func CreateClient() (grpcControllers.EmailSenderClient, error) {
-	connection, error := grpc.Dial(fmt.Sprintf("%s:%s", grpcHost, grpcPort), grpc.WithInsecure())
-	if error != nil {
-		panic(error)
-	}
-	client := grpcControllers.NewEmailSenderClient(connection)
-	return client, nil
-}
 
 func main() {
 	// Creating Default HTTP Router for the application..

@@ -25,7 +25,7 @@ func (this *EmailSenderSuite) SetupTest() {
 	this.EmailMessage = "Hello, this is test Email Message."
 	this.EmailReceiver = "some_email@gmail.com"
 	this.MockedEmailSenderController = mock_emails.NewMockEmailSenderInterface(
-		this.Controller)
+	this.Controller)
 }
 
 func (this *EmailSenderSuite) TearDownTest() {

@@ -28,6 +28,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"strings"
+
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
@@ -112,10 +114,8 @@ func CreategRPCServer() {
 func (this *grpcEmailServer) SendEmail(context context.Context,
 	RequestEmailParams *grpcControllers.DefaultEmailParams) (*grpcControllers.EmailResponse, error) {
 
-	sender := EmailSender{
-		CustomerEmail: RequestEmailParams.CustomerEmail,
-		Message:       RequestEmailParams.EmailMessage,
-	}
+	sender := NewEmailSender(
+		RequestEmailParams.CustomerEmail, RequestEmailParams.EmailMessage)
 
 	sended, error := sender.SendEmailNotification()
 	if error != nil {
@@ -129,10 +129,9 @@ func (this *grpcEmailServer) SendEmail(context context.Context,
 func (this *grpcEmailServer) SendOrderEmail(context context.Context,
 	RequestOrderEmailParams *grpcControllers.OrderEmailParams) (*grpcControllers.EmailResponse, error) {
 
-	sender := EmailSender{
-		CustomerEmail: RequestOrderEmailParams.CustomerEmail,
-		Message:       RequestOrderEmailParams.Message,
-	}
+	sender := NewEmailSender(RequestOrderEmailParams.CustomerEmail,
+		RequestOrderEmailParams.Message)
+
 	switch RequestOrderEmailParams.Status {
 
 	case grpcControllers.OrderStatus_ACCEPTED:
@@ -187,13 +186,22 @@ type EmailSenderInterface interface {
 type EmailSender struct {
 	CustomerEmail string
 	Message       string
+	SmtpClient    *mail.SMTPClient
+}
+
+func NewEmailSender(Email string, Message string) *EmailSender {
+	Client, Error := createSMTPClient()
+	if Error != nil {
+		panic(Error)
+	}
+	return &EmailSender{SmtpClient: Client, CustomerEmail: Email, Message: Message}
 }
 
 var (
 	AllStates = []string{"Delivered", "Canceled", "On-The-Way"}
 
 	// email properties
-	EmailHTMLBody = ``
+	EmailHTMLBody = `<body> <h1 class="Title">Hello, %s</h1> <div class="message">%s<h5></body>`
 )
 
 // Creates Default SMTP Client...
@@ -227,12 +235,6 @@ func createSMTPClient() (*mail.SMTPClient, error) {
 func (this *EmailSender) SendEmailNotification(
 	BackgroundImage ...EmailBackgroundImage) (bool, error) {
 
-	client, error := createSMTPClient()
-
-	if error != nil {
-		panic(error)
-	}
-
 	// if notNone := len(BackgroundImage); notNone != 0 {
 	// 	FileExtension := strings.Split(http.DetectContentType(BackgroundImage[0].file), "/")[1]
 	// 	ValidatedImage := mail.File{
@@ -255,7 +257,7 @@ func (this *EmailSender) SendEmailNotification(
 
 		EmailOptions := dkim.NewSigOptions()
 		EmailOptions.PrivateKey = []byte(SmtpPrivateKey)
-		EmailOptions.Domain = "gmail.com"
+		EmailOptions.Domain = strings.Split(this.CustomerEmail, "@")[1]
 		EmailOptions.Selector = "default"
 		EmailOptions.Headers = []string{"from", "date", "mime-version", "received", "received"}
 		EmailOptions.SignatureExpireIn = 3600
@@ -264,7 +266,7 @@ func (this *EmailSender) SendEmailNotification(
 
 		EmailMessage.SetDkim(EmailOptions)
 	}
-	SendedError := EmailMessage.Send(client)
+	SendedError := EmailMessage.Send(this.SmtpClient)
 
 	DebugLogger.Println(fmt.Sprintf("Sended Notification to customer: %s",
 		this.CustomerEmail))
@@ -313,10 +315,9 @@ func (this *EmailSender) SendEmailNotification(
 			} else {
 				DebugLogger.Println(fmt.Sprintf("Failed TO Save Email Document, Exception %s", error))
 			}
-
 			group.Done()
-		}(&Group, this.CustomerEmail, this.Message)
 
+		}(&Group, this.CustomerEmail, this.Message)
 		Group.Wait()
 		return true, nil
 

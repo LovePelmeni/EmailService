@@ -8,6 +8,7 @@ ENV GO111MODULE=on
 ENV CGO_ENABLED=1
 ENV PATH="/bin:$PATH"
 ENV GOOC=linux 
+ENV GINMODE=release
 
 COPY ./go.mod ./go.sum ./ 
 COPY . .
